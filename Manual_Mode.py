@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import os
+import numpy
+import math
+import time
 import paho.mqtt.client as mqtt
 if os.name == 'nt':
     import msvcrt
@@ -95,6 +98,8 @@ LEN_MX_PRESENT_SPEED           = 4
 DXL_CW_ANGLE_TO_Z              = 0
 DXL_CCW_ANGLETO_Z              = 0
 
+Wheel_stop = 0
+
 portHandler = PortHandler(DEVICENAME)
 packetHandler = PacketHandler(PROTOCOL_VERSION)
 groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_MX_MOVING_SPEED, LEN_MX_MOVING_SPEED )
@@ -138,6 +143,21 @@ for id in range(1, 5):
     else:
         print("Dynamixel#%d has been successfully set to wheel mode" % id)
 
+def Feedback():
+    if dxl_comm_result != COMM_SUCCESS:
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+    elif dxl_error != 0:
+        print("%s" % packetHandler.getRxPacketError(dxl_error))
+
+def WriteDXL_Feedback(W1,W2,W3,W4):
+    dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, 1, ADDR_MX_MOVING_SPEED, W1)
+    Feedback()
+    dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, 2, ADDR_MX_MOVING_SPEED, W2)
+    Feedback()
+    dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, 3, ADDR_MX_MOVING_SPEED, W3)
+    Feedback()
+    dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, 4, ADDR_MX_MOVING_SPEED, W4)
+    Feedback()
 
 ####################################################################################################################################################
 
@@ -153,177 +173,176 @@ def on_connect(client, userdata, flags, rc):
 
 ####################################################################################################################################################
 
+def callback_ridar(data):
+    global degree
+    global range
+    global Wheel_stop
+    count = 759
+    for i in range (0,count):
+        degree = (data.angle_min + data.angle_increment * i)*57.2958
+        #rospy.loginfo(i)
+        #rospy.loginfo('range min and max : [%f %f]', data.range_min ,data.range_max)
+        if (degree > -180 and degree < 20):
+            if(data.ranges[i] < 0.2):
+                Wheel_stop = 1
+            else:
+                Wheel_stop = 0
+        if(Wheel_stop == 0):
+            rospy.loginfo(': [%f %f]',degree,data.ranges[i])
+        else:
+            rospy.loginfo('STOP : [%f %f]',degree,data.ranges[i])
+    rospy.sleep(0.0025)
+
+def listener_ridar():
+    rospy.init_node('listener_test',anonymous=True)
+    rospy.Subscriber('/scan', LaserScan, callback_ridar)
+
+####################################################################################################################################################
+
 # The callback for when a PUBLISH message is received from the server.
-# "UP"
 
 def on_message(client, userdata, msg):
     print(msg.topic+" "+str(msg.payload))
-    st = split(msg.payload)
-    Direction = str(st[0])
-    DXL_MAXIMUM_SPEED_VALUE = int(st[1])
+    listener_ridar()
+    # Chassis Parameter
 
-    if Direction == "UP":
+    Lx = 0.45
+    Ly = 0.3
 
-        for id_u in range(1, 5):
-            if id_u == 1:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE+1023)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE+1023))
+    # Wheel Parameter
 
-            elif id_u == 4:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE+1023)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE+1023))
-            else:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE))
+    R = 0.04
+    K = 40.92
+    eqm = numpy.array([[1, 1, -(Lx+Ly)], [1, -1, (Lx+Ly)], [1, -1, -(Lx+Ly)], [1, 1, (Lx+Ly)]])
 
+    mes = msg.payload
+    st = mes.split()
 
-####################################################################################################################################################
+    Vx = float(st[0])
+    Vy = float(st[1])
+    Wz = float(st[2])
 
-####################################################################################################################################################
+    robot_vel = numpy.array([[Vx], [Vy], [Wz]])
+    wheel_vel = ((1/R)*eqm).dot((robot_vel))*K
 
-# "DOWN"
+    # "UP"
 
-    if Direction == "DOWN":
-
-        for id_u in range(1, 5):
-            if id_u == 2:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE+1023)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE+1023))
-
-            elif id_u == 3:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE+1023)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE+1023))
-            else:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE))
+    if Vx > 0 and Vy == 0 and Wz == 0:
+	print("Up")
+        W1 = int(math.floor(wheel_vel[0]))
+        W2 = int(math.floor(wheel_vel[1]))+1023
+        W3 = int(math.floor(wheel_vel[2]))
+        W4 = int(math.floor(wheel_vel[3]))+1023
+	print(W1,W2,W3,W4)
+        WriteDXL_Feedback(W1,W2,W3,W4)
 
 
-####################################################################################################################################################
 
-####################################################################################################################################################
+    # "DOWN"
 
-# "LEFT"
-
-    if Direction == "LEFT":
-
-        for id_u in range(1, 5):
-            if id_u == 1:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE+1023)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE+1023))
-
-            elif id_u == 2:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE+1023)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE+1023))
-            else:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE))
+    if Vx < 0 and Vy == 0 and Wz == 0:
+	print("Down")
+        W1 = -(int(math.floor(wheel_vel[0]))-1023)
+        W2 = -(int(math.floor(wheel_vel[0])))
+        W3 = -(int(math.floor(wheel_vel[0]))-1023)
+        W4 = -(int(math.floor(wheel_vel[0])))
+	print(W1,W2,W3,W4)
+        WriteDXL_Feedback(W1,W2,W3,W4)
 
 
-####################################################################################################################################################
+    # "RIGHT"
 
-####################################################################################################################################################
-
-# "RIGHT"
-
-    if Direction == "RIGHT":
-
-        for id_u in range(1, 5):
-            if id_u == 3:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE+1023)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE+1023))
-
-            elif id_u == 4:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE+1023)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE+1023))
-            else:
-                dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_u, ADDR_MX_MOVING_SPEED, DXL_MAXIMUM_SPEED_VALUE)
-                if dxl_comm_result != COMM_SUCCESS:
-                    print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-                elif dxl_error != 0:
-                    print("%s" % packetHandler.getRxPacketError(dxl_error))
-                else:
-                    print("ID[%03d] Speed: %03d " % (id_u, DXL_MAXIMUM_SPEED_VALUE))
+    if Vx == 0 and Vy > 0 and Wz ==0:
+	print("Right")
+        W1 = int(math.floor(wheel_vel[0])+1023)
+        W2 = -(int(math.floor(wheel_vel[1]))-1023)
+        W3 = -(int(math.floor(wheel_vel[2])))
+        W4 = (int(math.floor(wheel_vel[3])))
+	print(W1,W2,W3,W4)
+        WriteDXL_Feedback(W1,W2,W3,W4)
 
 
-####################################################################################################################################################
+    # "LEFT"
 
-####################################################################################################################################################
+    if Vx == 0 and Vy < 0 and Wz == 0:
+	print("Left")
+	W1 = -(int(math.floor(wheel_vel[0])))
+	W2 = int(math.floor(wheel_vel[1]))
+	W3 = int(math.floor(wheel_vel[2])+1023)
+	W4 = -(int(math.floor(wheel_vel[3]))-1023)
+	print(W1,W2,W3,W4)
+        WriteDXL_Feedback(W1,W2,W3,W4)
 
-# "STOP"
 
-    if Direction == "STOP":
-        for id_s in range(1, 5):
-            dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, id_s, ADDR_MX_MOVING_SPEED, 0)
-            if dxl_comm_result != COMM_SUCCESS:
-                print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
-            elif dxl_error != 0:
-                print("%s" % packetHandler.getRxPacketError(dxl_error))
-            else:
-                print("ID[%03d] Speed: %03d " % (id_s, 0))
+    # "TURN-RIGHT"
 
-####################################################################################################################################################
+    if Vx == 0 and Vy == 0 and Wz > 0:
+	print("Turn-right")
+        W1 = -(int(math.floor(wheel_vel[0]))-1023)
+        W2 = (int(math.floor(wheel_vel[1]))+1023)
+        W3 = -(int(math.floor(wheel_vel[2]))-1023)
+        W4 = (int(math.floor(wheel_vel[3]))+1023)
+	print(W1,W2,W3,W4)
+        WriteDXL_Feedback(W1,W2,W3,W4)
+
+
+    # "TURN-LEFT"
+
+    if Vx == 0 and Vy == 0 and Wz < 0:
+	print("Turn-left")
+        W1 = (int(math.floor(wheel_vel[0])))
+        W2 = -(int(math.floor(wheel_vel[1])))
+        W3 = int(math.floor(wheel_vel[2]))
+        W4 = -(int(math.floor(wheel_vel[3])))
+	print(W1,W2,W3,W4)
+        WriteDXL_Feedback(W1,W2,W3,W4)
+
+
+    # "STOP"
+
+    if Vx == 0 and Vy == 0 and Wz == 0:
+	print("Stop")
+        W1 = 0
+        W2 = 0
+        W3 = 0
+        W4 = 0
+        WriteDXL_Feedback(W1,W2,W3,W4)
+
+    if Wheel_stop == 1:
+	print("lidar_stop")
+        W1 = 0
+        W2 = 0
+        W3 = 0
+        W4 = 0
+        WriteDXL_Feedback(W1,W2,W3,W4)
+
+    # "0-180 Degree"
+    if Vx > 0 and Vy > 0 and Wz == 0:
+	print("0-180")
+        W1 = int(math.floor(wheel_vel[0]))
+        W2 = int(math.floor(wheel_vel[1]))+1023
+        W3 = int(math.floor(wheel_vel[2]))
+        W4 = int(math.floor(wheel_vel[3]))+1023
+	print(W1,W2,W3,W4)
+        WriteDXL_Feedback(W1,W2,W3,W4)
+
+    # "181-359 Degree"
+    if Vx < 0 and Vy < 0 and Wz == 0:
+	print("181-359")
+        W1 = -(int(math.floor(wheel_vel[0]))-1023)
+        W2 = -(int(math.floor(wheel_vel[0])))
+        W3 = -(int(math.floor(wheel_vel[0]))-1023)
+        W4 = -(int(math.floor(wheel_vel[0])))
+	print(W1,W2,W3,W4)
+        WriteDXL_Feedback(W1,W2,W3,W4)
+
 
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
 
-client.connect("service.hcilab.net", 2580, 60)
-
+#client.connect("service.hcilab.net", 2580, 60)
+client.connect("broker.hivemq.com")
 # Blocking call that processes network traffic, dispatches callbacks and
 # handles reconnecting.
 # Other loop*() functions are available that give a threaded interface and a
