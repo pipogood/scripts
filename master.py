@@ -16,7 +16,7 @@ from open_manipulator_msgs.srv import *
 
 home = "1 0.184 0 0.493 0 0 0 5"
 pose_1 = "1 0.3 0.1 0.3 0 0 0.3 5"
-pose_2 = "1 0.5 0.1 0.1 0 0.7 0.2 5"
+pose_2 = "1 0.5 0 0.2 0 0.7 0.2 5"
 mes = home
 stop = 0
 stopend = 0
@@ -70,6 +70,8 @@ def on_message(client,userdata,msg):
     elif len(mes) == 1:
         stop = 1
         client.publish("manipulator/debug","message emergency stop received",2)
+
+    listener_joint_position()
 
 def run_begin():
     client.publish("manipulator/debug","Initialize",2)
@@ -194,25 +196,26 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, dt):
         #         Start_loop = 1
         #         break
         #     print("Start_loop is:", Start_loop)
+        rospy.sleep(0.5)
 
         while True:
-            listener_joint_position()
             if stopend == 0:
                 print("Moving State", data_x, data_y, data_z, data_ox, data_oy, data_oz, data_ow)
                 client.publish("manipulator/debug","Moving State",2)
 
-                if((data_x <= x+0.005 and data_x >= x-0.005) and (data_y <= y+0.005 and data_y >= y-0.005) and (data_z <= z+0.005 and data_z >= z-0.005) and (data_ow <= ow+0.005 and data_ow >= ow-0.005) and (data_ox <= ox+0.005 and data_ox>= ox-0.005) and (data_oy <= oy+0.005 and data_oy >= oy-0.005) and (data_oz <= oz+0.005 and data_oz >= oz-0.005)):
+                # if((data_x <= x+0.005 and data_x >= x-0.005) and (data_y <= y+0.005 and data_y >= y-0.005) and (data_z <= z+0.005 and data_z >= z-0.005) and (data_ow <= ow+0.005 and data_ow >= ow-0.005) and (data_ox <= ox+0.005 and data_ox>= ox-0.005) and (data_oy <= oy+0.005 and data_oy >= oy-0.005) and (data_oz <= oz+0.005 and data_oz >= oz-0.005)):
+                #     stopend = 0
+                #     print("Reach to Goal Position")
+                #     client.publish("manipulator/debug","Reach to Goal Position",2)
+                #     return resp1
+
+                if(status == '"STOPPED"'):
                     stopend = 0
                     print("Reach to Goal Position")
                     client.publish("manipulator/debug","Reach to Goal Position",2)
                     return resp1
 
                 print("status is:",status)
-                if(status == '"STOPPED"'):
-                    stopend = 0
-                    print("Over Limit Workspace")
-                    client.publish("manipulator/debug","Over Limit Workspace",2)
-                    return resp1
 
                 if stop == 1:
 
@@ -355,11 +358,10 @@ def run_mode():
         pitch = float(st[5])
         roll = float(st[6])
         dt = float(st[7])
-        listener_joint_position()
         if((x != prev_x) or (y != prev_y) or (z != prev_z) or (yaw != prev_yaw) or (pitch != prev_pitch) or (roll != prev_roll)):
-            if((x > 0 and x < 0.2) and (z > 0 and z < 0.2)):
+            if((x > 0 and x <= 0.15) and (y > 0 and y <= 0.15)):
                 over_limit = 1
-            if(z < 0.1):
+            if(z < 0.2):
                 over_limit = 1
 
             if(over_limit == 1):
@@ -468,16 +470,14 @@ print("Conecting to broker",broker_address)
 
 #client.connect(broker_address,2580)
 client.connect(broker_address)
+run_begin()
+# GPIO.setmode(GPIO.BOARD)
+# GPIO.setup(but_pin, GPIO.IN)
 
 client.loop_start()
 
-
-# GPIO.setmode(GPIO.BOARD)
-# GPIO.setup(but_pin, GPIO.IN)
-run_begin()
-
 while True:
-    time.sleep(1)
+    time.sleep(0.5)
     if mes == "SHUTDOWN":
     	os.system("rosnode kill master_publisher")
     	rospy.on_shutdown(myhook)
