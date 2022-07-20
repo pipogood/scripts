@@ -245,7 +245,6 @@ class DemoNode(): #Timer
 
 def callback_ridar(data):
     global degree
-    global range
     global q1
     global q2
     global q3
@@ -254,123 +253,128 @@ def callback_ridar(data):
     global q6
     global q7
     global q8
-    global Wheel_stop_left
-    global Wheel_stop_right
-    global Wheel_stop_up
-    global Wheel_stop_down
+    global lidar_x
+    global lidar_y
     count = 759
 
     for i in range (0,count):
         degree = (data.angle_min + data.angle_increment * i)*57.2958
-        if (degree > 120 and degree < 125):
-            if(data.ranges[i] < 0.25):
-                q1 = "WARNING"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q1-WARNING : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] < 0.15):
-                q1 = "STOP"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q1-STOP : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] >= 0.25):
-                q1 = "OK"
-            # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-            # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
 
-        if (degree > 150 and degree < 155):
-            if(data.ranges[i] < 0.25):
+        if(degree >= 90 and degree <= 180):
+            degree = degree - 90
+        elif(degree >= -180 and degree < 0):
+            degree = (180-abs(degree)) + 90
+        else:
+            degree =  270 + degree
+
+        lidar_x = abs((data.ranges[i])*sin(degree/57.2958))
+        lidar_y = abs((data.ranges[i])*cos(degree/57.2958))
+
+        if (degree >= 0 and degree < 45):
+            if (lidar_y < 0.4):
+                q1 = "WARNING"
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q1 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_y < 0.2):
+                q1 = "STOP"
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q1 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_y >= 0.4):
+                q1 = "OK"
+
+        if (degree >= 45 and degree < 90):
+            if (lidar_x < 0.4):
                 q2 = "WARNING"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q2-WARNING : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] < 0.15):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q2 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_x < 0.2):
                 q2 = "STOP"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q2-STOP : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] >= 0.25):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q2 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_x >= 0.4):
                 q2 = "OK"
             # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
             # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
 
-        if (degree > -155 and degree < -150):
-            if(data.ranges[i] < 0.25):
+        if (degree >= 90 and degree < 135):
+            if (lidar_x < 0.4):
                 q3 = "WARNING"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q3-WARNING : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] < 0.15):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q3 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_x < 0.2):
                 q3 = "STOP"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q3-STOP : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] >= 0.25):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q3 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_x >= 0.4):
                 q3 = "OK"
-            # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-            # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
 
-        if (degree > -125 and degree < -120):
-            if(data.ranges[i] < 0.25):
+        if (degree >= 135 and degree < 180):
+            if (lidar_y < 0.4):
                 q4 = "WARNING"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q4-WARNING: [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] < 0.15):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q4 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_y < 0.2):
                 q4 = "STOP"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q4-STOP : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] >= 0.25):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q4 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_y >= 0.4):
                 q4 = "OK"
             # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
             # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
 
-        if (degree > -75 and degree < -70):
-            if(data.ranges[i] < 0.25):
+        if (degree >= 180 and degree < 225):
+            if (lidar_y < 0.4):
                 q5 = "WARNING"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q5-WARNING : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] < 0.15):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q5 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_y < 0.2):
                 q5 = "STOP"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q5-STOP : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] >= 0.25):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q5 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_y >= 0.4):
                 q5 = "OK"
+            # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
+            # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+
+        if (degree >= 225 and degree < 270):
+            if (lidar_x < 0.4):
+                q6 = "WARNING"
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q6 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_x < 0.2):
+                q6 = "STOP"
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q6 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_x >= 0.4):
+                q6 = "OK"
             # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
             # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
             #rospy.loginfo('Q5: [%s]',q5)
 
-        if (degree > -25 and degree < -20):
-            if(data.ranges[i] < 0.25):
-                q6 = "WARNING"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q6-WARNING : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] < 0.15):
-                q6 = "STOP"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q6-STOP : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] >= 0.25):
-                q6 = "OK"
-            # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-            # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-
-        if (degree > 20 and degree < 25):
-            if(data.ranges[i] < 0.25):
+        if (degree >= 270 and degree < 315):
+            if (lidar_x < 0.4):
                 q7 = "WARNING"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q7-WARNING : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] < 0.15):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q7 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_x < 0.2):
                 q7 = "STOP"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q7-STOP : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] >= 0.25):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q7 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_x >= 0.4):
                 q7 = "OK"
             # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
             # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
 
-        if (degree > 70 and degree < 75):
-            if(data.ranges[i] < 0.25):
+        if (degree >= 315 and degree < 360):
+            if (lidar_y < 0.4):
                 q8 = "WARNING"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q8-WARNING : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] < 0.15):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q8 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_y < 0.2):
                 q8 = "STOP"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q8-STOP : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if(data.ranges[i] >= 0.25):
+                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                rospy.loginfo('Q8 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+            if (lidar_y >= 0.4):
                 q8 = "OK"
 
         if(q4 == "STOP" or q5 == "STOP"):
