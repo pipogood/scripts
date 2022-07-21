@@ -5,6 +5,7 @@ import os
 import numpy
 import math
 import time
+import rospy
 import paho.mqtt.client as mqtt
 if os.name == 'nt':
     import msvcrt
@@ -159,7 +160,7 @@ for id in range(1, 5):
 
 def Feedback():
     if dxl_comm_result != COMM_SUCCESS:
-        print("%s" % packetHandler.getTxRxclient.publish("manipulator/debug","connect ok",2)Result(dxl_comm_result))
+        print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
     elif dxl_error != 0:
         print("%s" % packetHandler.getRxPacketError(dxl_error))
 
@@ -215,7 +216,13 @@ def Set_robot_safe():
 
         if(Time == 1.5):
             W1 = 0
-            W2 = 0
+            W2 = 0client.loop_start()
+while True:
+    time.sleep(0.5)
+    run_mode()
+
+client.loop_stop()
+client.disconnect()
             W3 = 0
             W4 = 0
             WriteDXL_Feedback(W1,W2,W3,W4)
@@ -244,185 +251,23 @@ class DemoNode(): #Timer
 
 ####################################################################################################################################################
 
-def callback_ridar(data):
-    global degree
-    global q1
-    global q2
-    global q3
-    global q4
-    global q5
-    global q6
-    global q7
-    global q8
-    global lidar_x
-    global lidar_y
-    count = 759
 
-    for i in range (0,count):
-        degree = (data.angle_min + data.angle_increment * i)*57.2958
-
-        if(degree >= 90 and degree <= 180):
-            degree = degree - 90
-        elif(degree >= -180 and degree < 0):
-            degree = (180-abs(degree)) + 90
-        else:
-            degree =  270 + degree
-
-        lidar_x = abs((data.ranges[i])*sin(degree/57.2958))
-        lidar_y = abs((data.ranges[i])*cos(degree/57.2958))
 
 def callback_ridar(data):
-    global degree
-    global q1
-    global q2
-    global q3
-    global q4
-    global q5
-    global q6
-    global q7
-    global q8
-    global lidar_x
-    global lidar_y
-    count = 759
+    rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+    ridar_mes = data.data
+    if ridar_mes == "STOP":
+        client.publish("telemm/mob/manual","0 0 0")
 
-    for i in range (0,count):
-        degree = (data.angle_min + data.angle_increment * i)*57.2958
-
-        if(degree >= 90 and degree <= 180):
-            degree = degree - 90
-        elif(degree >= -180 and degree < 0):
-            degree = (180-abs(degree)) + 90
-        else:
-            degree =  270 + degree
-
-        lidar_x = abs((data.ranges[i])*sin(degree/57.2958))
-        lidar_y = abs((data.ranges[i])*cos(degree/57.2958))
-
-        if (degree >= 0 and degree < 45):
-            if (lidar_x < 0.4 and lidar_y < 0.4):
-                q1 = "WARNING"
-                # rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                # rospy.loginfo('Q1 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_x < 0.2 and lidar_y < 0.4):
-                q1 = "STOP"
-                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                rospy.loginfo('Q1 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_x >= 0.4 and lidar_y < 0.4):
-                q1 = "OK"
-
-        if (degree >= 45 and degree < 90):
-            if (lidar_x < 0.4 and lidar_y < 0.4):
-                q2 = "WARNING"
-                # rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                # rospy.loginfo('Q2 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_x < 0.2 and lidar_y < 0.4):
-                q2 = "STOP"
-                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                rospy.loginfo('Q2 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_x >= 0.4 and lidar_y < 0.4):
-                q2 = "OK"
-            # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-            # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-
-        if (degree >= 90 and degree < 135):
-            if (lidar_x < 0.4):
-                q3 = "WARNING"
-                # rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                # rospy.loginfo('Q3 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_x < 0.2):
-                q3 = "STOP"
-                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                rospy.loginfo('Q3 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_x >= 0.4):
-                q3 = "OK"
-
-        if (degree >= 135 and degree < 180):
-            if (lidar_y < 0.4):
-                q4 = "WARNING"
-                # rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                # rospy.loginfo('Q4 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_y < 0.2):
-                q4 = "STOP"
-                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                rospy.loginfo('Q4 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_y >= 0.4):
-                q4 = "OK"
-            # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-            # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-
-        if (degree >= 180 and degree < 225):
-            if (lidar_y < 0.4):
-                q5 = "WARNING"
-                # rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                # rospy.loginfo('Q5 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_y < 0.2):
-                q5 = "STOP"
-                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                rospy.loginfo('Q5 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_y >= 0.4):
-                q5 = "OK"
-            # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-            # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-
-        if (degree >= 225 and degree < 270):
-            if (lidar_y < 0.4):
-                q6 = "WARNING"
-                #rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                #rospy.loginfo('Q6 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_y < 0.2):
-                q6 = "STOP"
-                #rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                #rospy.loginfo('Q6 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_y >= 0.4):
-                q6 = "OK"
-            # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-            # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            #rospy.loginfo('Q5: [%s]',q5)
-
-        if (degree >= 270 and degree < 315):
-            if (lidar_x < 0.4):
-                q7 = "WARNING"
-                #rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                #rospy.loginfo('Q7 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_x < 0.2):
-                q7 = "STOP"
-                #rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                #rospy.loginfo('Q7 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_x >= 0.4):
-                q7 = "OK"
-            # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-            # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-
-        if (degree >= 315 and degree < 360):
-            if (lidar_y < 0.4):
-                q8 = "WARNING"
-                #rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                #rospy.loginfo('Q8 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_y < 0.2):
-                q8 = "STOP"
-                #rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                #rospy.loginfo('Q8 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-            if (lidar_y >= 0.4):
-                q8 = "OK"
-            # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-            # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-
-        #rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-        #rospy.loginfo(': [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
-
-        if(q4 == "STOP" or q5 == "STOP"):
-            Wheel_stop_left = 1
-            client.publish("telemm/mob/manual","0 0 0")
-
-        elif(q2 == "STOP" or q3 == "STOP"):
-            Wheel_stop_up = 1
-            client.publish("telemm/mob/manual","0 0 0")
-
-
-def Mobility_listener():
-    rospy.init_node('Mobility_listener',anonymous=True)
-    rospy.Subscriber('/scan', LaserScan, callback_ridar)
+def listener():
+    rospy.Subscriber("chatter", String, callback_ridar)
     DemoNode()
+
+
+# def Mobility_listener():
+#     rospy.init_node('Mobility_listener',anonymous=True)
+#     rospy.Subscriber('/scan', LaserScan, callback_ridar)
+#     DemoNode()
 
 ####################################################################################################################################################
 
@@ -432,10 +277,7 @@ def on_message(client, userdata, msg):
     global mes
     print(msg.topic+" "+str(msg.payload))
     mes = msg.payload
-    Mobility_listener()
-
-
-def run_mode():
+    listener()
 
     Lx = 0.45
     Ly = 0.3
@@ -567,9 +409,7 @@ def run_mode():
         WriteDXL_Feedback(W1,W2,W3,W4)
 
     # "181-359 Degree"    if mes == "SHUTDOWN":
-    	os.system("rosnode kill master_publisher")
-    	rospy.on_shutdown(myhook)
-    else:
+
     if Vx < 0 and Vy < 0 and Wz == 0:
 	    print("181-359")
         W1 = -(int(math.floor(wheel_vel[0]))-1023)
@@ -589,10 +429,5 @@ client.connect("broker.hivemq.com")
 # handles reconnecting.
 # Other loop*() functions are available that give a threaded interface and a
 # manual interface.
-client.loop_start()
-while True:
-    time.sleep(0.5)
-    run_mode()
 
-client.loop_stop()
-client.disconnect()
+client.loop_forever()
