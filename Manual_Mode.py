@@ -216,13 +216,7 @@ def Set_robot_safe():
 
         if(Time == 1.5):
             W1 = 0
-            W2 = 0client.loop_start()
-while True:
-    time.sleep(0.5)
-    run_mode()
-
-client.loop_stop()
-client.disconnect()
+            W2 = 0
             W3 = 0
             W4 = 0
             WriteDXL_Feedback(W1,W2,W3,W4)
@@ -238,7 +232,7 @@ def on_connect(client, userdata, flags, rc):
 
     # Subscribing in on_connect() means that if we lose the connection and
     # reconnect then subscriptions will be renewed.
-    client.subscribe("telemm/mob/manual")
+    client.subscribe("UnityToRobot/mobility")
 
 class DemoNode(): #Timer
   def __init__(self):
@@ -257,7 +251,7 @@ def callback_ridar(data):
     rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
     ridar_mes = data.data
     if ridar_mes == "STOP":
-        client.publish("telemm/mob/manual","0 0 0")
+        client.publish("UnityToRobot/mobility","0 0 0")
 
 def listener():
     rospy.Subscriber("chatter", String, callback_ridar)
@@ -277,7 +271,7 @@ def on_message(client, userdata, msg):
     global mes
     print(msg.topic+" "+str(msg.payload))
     mes = msg.payload
-    listener()
+    #listener()
 
     Lx = 0.45
     Ly = 0.3
@@ -298,75 +292,82 @@ def on_message(client, userdata, msg):
 
     # "UP"
 
-    if Vx > 0 and Vy == 0 and Wz == 0:
-	    print("Up")
-        W1 = int(math.floor(wheel_vel[0]))
-        W2 = int(math.floor(wheel_vel[1]))+1023
-        W3 = int(math.floor(wheel_vel[2]))
-        W4 = int(math.floor(wheel_vel[3]))+1023
-	    print(W1,W2,W3,W4)
-        WriteDXL_Feedback(W1,W2,W3,W4)
+    W1 = int(math.floor(wheel_vel[0]))
+    W2 = int(math.floor(wheel_vel[1]))+1023
+    W3 = int(math.floor(wheel_vel[2]))
+    W4 = int(math.floor(wheel_vel[3]))+1023
+    print(W1,W2,W3,W4)
+    WriteDXL_Feedback(W1,W2,W3,W4)
 
-
-
-    # "DOWN"
-
-    if Vx < 0 and Vy == 0 and Wz == 0:
-	    print("Down")
-        W1 = -(int(math.floor(wheel_vel[0]))-1023)
-        W2 = -(int(math.floor(wheel_vel[0])))
-        W3 = -(int(math.floor(wheel_vel[0]))-1023)
-        W4 = -(int(math.floor(wheel_vel[0])))
-	    print(W1,W2,W3,W4)
-        WriteDXL_Feedback(W1,W2,W3,W4)
-
-
-    # "RIGHT"
-
-    if Vx == 0 and Vy > 0 and Wz ==0:
-	    print("Right")
-        W1 = int(math.floor(wheel_vel[0])+1023)
-        W2 = -(int(math.floor(wheel_vel[1]))-1023)
-        W3 = -(int(math.floor(wheel_vel[2])))
-        W4 = (int(math.floor(wheel_vel[3])))
-	    print(W1,W2,W3,W4)
-        WriteDXL_Feedback(W1,W2,W3,W4)
-
-
-    # "LEFT"
-
-    if Vx == 0 and Vy < 0 and Wz == 0:
-        print("Left")
-        W1 = -(int(math.floor(wheel_vel[0])))
-        W2 = int(math.floor(wheel_vel[1]))
-        W3 = int(math.floor(wheel_vel[2])+1023)
-        W4 = -(int(math.floor(wheel_vel[3]))-1023)
-        print(W1,W2,W3,W4)
-        WriteDXL_Feedback(W1,W2,W3,W4)
-
-
-    # "TURN-RIGHT"
-
-    if Vx == 0 and Vy == 0 and Wz > 0:
-	    print("Turn-right")
-        W1 = -(int(math.floor(wheel_vel[0]))-1023)
-        W2 = (int(math.floor(wheel_vel[1]))+1023)
-        W3 = -(int(math.floor(wheel_vel[2]))-1023)
-        W4 = (int(math.floor(wheel_vel[3]))+1023)
-	    print(W1,W2,W3,W4)
-        WriteDXL_Feedback(W1,W2,W3,W4)
-
-
-    # "TURN-LEFT"
-
-    if Vx == 0 and Vy == 0 and Wz < 0:
-	    print("Turn-left")
-        W1 = (int(math.floor(wheel_vel[0])))
-        W2 = -(int(math.floor(wheel_vel[1])))
-        W3 = int(math.floor(wheel_vel[2]))
-        W4 = -(int(math.floor(wheel_vel[3])))
-	    print(W1,W2,W3,W4)
-        WriteDXL_Feedback(W1,W2,W3,W4)
+    # if Vx > 0 and Vy == 0 and Wz == 0:
+	#     print("Up")
+    #     W1 = int(math.floor(wheel_vel[0]))
+    #     W2 = int(math.floor(wheel_vel[1]))+1023
+    #     W3 = int(math.floor(wheel_vel[2]))
+    #     W4 = int(math.floor(wheel_vel[3]))+1023
+	#     print(W1,W2,W3,W4)
+    #     WriteDXL_Feedback(W1,W2,W3,W4)
+    #
+    #
+    #
+    # # "DOWN"
+    #
+    # if Vx < 0 and Vy == 0 and Wz == 0:
+	#     print("Down")
+    #     W1 = -(int(math.floor(wheel_vel[0]))-1023)
+    #     W2 = -(int(math.floor(wheel_vel[0])))
+    #     W3 = -(int(math.floor(wheel_vel[0]))-1023)
+    #     W4 = -(int(math.floor(wheel_vel[0])))
+	#     print(W1,W2,W3,W4)
+    #     WriteDXL_Feedback(W1,W2,W3,W4)
+    #
+    #
+    # # "RIGHT"
+    #
+    # if Vx == 0 and Vy > 0 and Wz ==0:
+	#     print("Right")
+    #     W1 = int(math.floor(wheel_vel[0])+1023)
+    #     W2 = -(int(math.floor(wheel_vel[1]))-1023)
+    #     W3 = -(int(math.floor(wheel_vel[2])))
+    #     W4 = (int(math.floor(wheel_vel[3])))
+	#     print(W1,W2,W3,W4)
+    #     WriteDXL_Feedback(W1,W2,W3,W4)
+    #
+    #
+    # # "LEFT"
+    #
+    # if Vx == 0 and Vy < 0 and Wz == 0:
+    #     print("Left")
+    #     W1 = -(int(math.floor(wheel_vel[0])))
+    #     W2 = int(math.floor(wheel_vel[1]))
+    #     W3 = int(math.floor(wheel_vel[2])+1023)
+    #     W4 = -(int(math.floor(wheel_vel[3]))-1023)
+    #     print(W1,W2,W3,W4)
+    #     WriteDXL_Feedback(W1,W2,W3,W4)
+    #
+    #
+    # # "TURN-RIGHT"
+    #
+    # if Vx == 0 and Vy == 0 and Wz > 0:
+	#     print("Turn-right")
+    #     W1 = -(int(math.floor(wheel_vel[0]))-1023)
+    #     W2 = (int(math.floor(wheel_vel[1]))+1023)
+    #     W3 = -(int(math.floor(wheel_vel[2]))-1023)
+    #     W4 = (int(math.floor(wheel_vel[3]))+1023)
+	#     print(W1,W2,W3,W4)
+    #     WriteDXL_Feedback(W1,W2,W3,W4)
+    #
+    #
+    # # "TURN-LEFT"
+    #
+    # if Vx == 0 and Vy == 0 and Wz < 0:
+	#     print("Turn-left")
+    #     W1 = (int(math.floor(wheel_vel[0])))
+    #     W2 = -(int(math.floor(wheel_vel[1])))
+    #     W3 = int(math.floor(wheel_vel[2]))
+    #     W4 = -(int(math.floor(wheel_vel[3])))
+	#     print(W1,W2,W3,W4)
+    #     WriteDXL_Feedback(W1,W2,W3,W4)
 
 
     # "STOP"
@@ -389,7 +390,7 @@ def on_message(client, userdata, msg):
         #Set_robot_safe()
 
 
-    elif Wheel_stop_up == 1:
+    if Wheel_stop_up == 1:
 	    print("lidar_stop_up")
         W1 = 0
         W2 = 0
@@ -398,26 +399,26 @@ def on_message(client, userdata, msg):
         WriteDXL_Feedback(W1,W2,W3,W4)
         #Set_robot_safe()
 
-    # "0-180 Degree"
-    if Vx > 0 and Vy > 0 and Wz == 0:
-	    print("0-180")
-        W1 = int(math.floor(wheel_vel[0]))
-        W2 = int(math.floor(wheel_vel[1]))+1023
-        W3 = int(math.floor(wheel_vel[2]))
-        W4 = int(math.floor(wheel_vel[3]))+1023
-	    print(W1,W2,W3,W4)
-        WriteDXL_Feedback(W1,W2,W3,W4)
-
-    # "181-359 Degree"    if mes == "SHUTDOWN":
-
-    if Vx < 0 and Vy < 0 and Wz == 0:
-	    print("181-359")
-        W1 = -(int(math.floor(wheel_vel[0]))-1023)
-        W2 = -(int(math.floor(wheel_vel[0])))
-        W3 = -(int(math.floor(wheel_vel[0]))-1023)
-        W4 = -(int(math.floor(wheel_vel[0])))
-	    print(W1,W2,W3,W4)
-        WriteDXL_Feedback(W1,W2,W3,W4)
+    # # "0-180 Degree"
+    # if Vx > 0 and Vy > 0 and Wz == 0:
+	#     print("0-180")
+    #     W1 = int(math.floor(wheel_vel[0]))
+    #     W2 = int(math.floor(wheel_vel[1]))+1023
+    #     W3 = int(math.floor(wheel_vel[2]))
+    #     W4 = int(math.floor(wheel_vel[3]))+1023
+	#     print(W1,W2,W3,W4)
+    #     WriteDXL_Feedback(W1,W2,W3,W4)
+    #
+    # # "181-359 Degree"    if mes == "SHUTDOWN":
+    #
+    # if Vx < 0 and Vy < 0 and Wz == 0:
+	#     print("181-359")
+    #     W1 = -(int(math.floor(wheel_vel[0]))-1023)
+    #     W2 = -(int(math.floor(wheel_vel[0])))
+    #     W3 = -(int(math.floor(wheel_vel[0]))-1023)
+    #     W4 = -(int(math.floor(wheel_vel[0])))
+	#     print(W1,W2,W3,W4)
+    #     WriteDXL_Feedback(W1,W2,W3,W4)
 
 client = mqtt.Client()
 client.on_connect = on_connect
