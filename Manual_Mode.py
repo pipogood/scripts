@@ -290,12 +290,30 @@ def on_message(client, userdata, msg):
     robot_vel = numpy.array([[Vx], [Vy], [Wz]])
     wheel_vel = ((1/R)*eqm).dot((robot_vel))*K
 
+
     # "UP"
 
-    W1 = int(math.floor(wheel_vel[0]))
-    W2 = int(math.floor(wheel_vel[1]))+1023
-    W3 = int(math.floor(wheel_vel[2]))
-    W4 = int(math.floor(wheel_vel[3]))+1023
+    W1 = int(math.floor(wheel_vel[0])) #0-1023
+    W2 = int(math.floor(wheel_vel[1])) #1024-2046
+    W3 = int(math.floor(wheel_vel[2])) #0-1023
+    W4 = int(math.floor(wheel_vel[3])) #1024-2046
+
+    if(W1 < 0):
+        W1 = abs(W1)+1023
+
+    if(W2 < 0):
+        W2 = abs(W2)
+    else:
+        W2 = W2+1023
+
+    if(W3 < 0):
+        W3 = abs(W3) +1023
+
+    if(W4 < 0):
+        W4 = abs(W4)
+    else:
+        W4 = W4+1023
+        
     print(W1,W2,W3,W4)
     WriteDXL_Feedback(W1,W2,W3,W4)
 
