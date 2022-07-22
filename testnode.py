@@ -8,6 +8,7 @@ from open_manipulator_msgs.msg import KinematicsPose
 from sensor_msgs.msg import JointState
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String
+import paho.mqtt.client as mqtt
 
 q1 = ''
 q2 = ''
@@ -18,7 +19,7 @@ q6 = ''
 q7 = ''
 q8 = ''
 Time = 0
-dt = 0.01
+dt = 0.1
 stop = 0
 
 def callback(data):
@@ -56,6 +57,9 @@ class DemoNode():
   def demo_callback(self, timer):
     global Time
     Time += dt
+    send_to_unity = q1 + ' ' + q2 + ' ' + q3 + ' '+ q4 + ' ' + q5 + ' ' + q6 + ' ' +q7 +' ' +q8
+    #if(q2 != "OK"):
+    client.publish("RobotFeedback/mobility",send_to_unity)
     #print(Time)
 
 def callback_ridar(data):
@@ -105,8 +109,8 @@ def callback_ridar(data):
                 # rospy.loginfo('Q2 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
             if (lidar_x < 0.2 and lidar_y < 0.4):
                 q2 = "STOP"
-                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                rospy.loginfo('Q2 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+                #rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                #rospy.loginfo('Q2 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
             if (lidar_x >= 0.4 and lidar_y < 0.4):
                 q2 = "OK"
             # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
@@ -119,8 +123,8 @@ def callback_ridar(data):
                 # rospy.loginfo('Q3 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
             if (data.ranges[i] < 0.2):
                 q3 = "STOP"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q3 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+                #rospy.loginfo(': [%f %f]',degree,data.ranges[i])
+                #rospy.loginfo('Q3 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
             if (data.ranges[i] >= 0.4):
                 q3 = "OK"
 
@@ -131,8 +135,8 @@ def callback_ridar(data):
                 # rospy.loginfo('Q4 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
             if (data.ranges[i] < 0.2):
                 q4 = "STOP"
-                rospy.loginfo(': [%f %f]',degree,data.ranges[i])
-                rospy.loginfo('Q4 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+                #rospy.loginfo(': [%f %f]',degree,data.ranges[i])
+                #rospy.loginfo('Q4 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
             if (data.ranges[i] >= 0.4):
                 q4 = "OK"
             # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
@@ -145,8 +149,8 @@ def callback_ridar(data):
                 # rospy.loginfo('Q5 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
             if (lidar_y < 0.2):
                 q5 = "STOP"
-                rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
-                rospy.loginfo('Q5 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
+                #rospy.loginfo(': [%f %f %f]',degree,lidar_x,lidar_y)
+                #rospy.loginfo('Q5 :[%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
             if (lidar_y >= 0.4):
                 q5 = "OK"
             # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
@@ -166,7 +170,6 @@ def callback_ridar(data):
             # rospy.loginfo(': [%f %f]',degree,data.ranges[i])
             # rospy.loginfo('Q1-Q8 : [%s %s %s %s %s %s %s %s]',q1,q2,q3,q4,q5,q6,q7,q8)
             #rospy.loginfo('Q5: [%s]',q5)
-
         if (degree >= 270 and degree < 315):
             if (lidar_x < 0.4):
                 q7 = "WARNING"
@@ -202,11 +205,12 @@ def talker():
     pub = rospy.Publisher('chatter', String, queue_size=10)
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
-        if q2 == "STOP" or q3 == "STOP":
+        if q2 == "STOP" or q3 == "STOP" or q4 == "STOP":
+        #if q1 == "STOP":
             send_str = "STOP"
+            rospy.loginfo(send_str)
         else:
             send_str = "OK"
-        rospy.loginfo(send_str)
         pub.publish(send_str)
         rate.sleep()
 
@@ -227,6 +231,10 @@ def listener_ridar():
 
 def myhook():
     print("Shutdown and Reintialize")
+
+client = mqtt.Client()
+#client.on_connect = on_connect
+client.connect("broker.hivemq.com")
 
 if __name__ == '__main__':
 
