@@ -44,15 +44,13 @@ def on_connect(client, userdata, flags, rc):
         print("connected OK")
         client.subscribe(MQTT_topic)
         client.publish("manipulator/debug","connect ok",2)
+        print("Idle State")
+        client.publish("manipulator/debug","Idle State",2)
     else:
         print("Bad connection Returned code=", rc)
 
 def on_disconnect(client, userdata, flags,rc=0):
     print("DisConnected result code" +str(rc))
-
-def myhook():
-    client.publish("manipulator/debug","Shutdown and Reinitialize",2)
-    print("Shutdown and Reintialize")
 
 def on_message(client,userdata,msg):
     global mes
@@ -187,15 +185,6 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, dt):
         arg.kinematics_pose.pose.orientation.z = oz
         arg.path_time = dt
         resp1 = set_position(arg)
-
-        # while True:
-        #     listener_joint_position()
-        #     if((joint1 >= 1.50 or joint1 <= -1.50) or (joint2 >= 0.7 or joint2 <= -1.50) or (joint3 >= 1.50 or joint3 <= -1.50) or (joint4 >= 1.5 or joint4 <= -1.5) or (joint5 >= 1.50 or joint5 <= -1.50)or (joint6 >= 1.50 or joint6 <= -1.50)):
-        #         Start_loop = 0
-        #     if((joint1 <= 1.50 or joint1 >= -1.50) or (joint2 <= 0.7 or joint2 >= -1.50) or (joint3 <= 1.50 or joint3 >= -1.50) or (joint4 <= 1.5 or joint4 >= -1.5) or (joint5 <= 1.50 or joint5 >= -1.50)or (joint6 <= 1.50 or joint6 >= -1.50)):
-        #         Start_loop = 1
-        #         break
-        #     print("Start_loop is:", Start_loop)
         rospy.sleep(0.5)
 
         while True:
@@ -203,15 +192,11 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, dt):
                 print("Moving State", data_x, data_y, data_z, data_ox, data_oy, data_oz, data_ow)
                 client.publish("manipulator/debug","Moving State",2)
 
-                # if((data_x <= x+0.005 and data_x >= x-0.005) and (data_y <= y+0.005 and data_y >= y-0.005) and (data_z <= z+0.005 and data_z >= z-0.005) and (data_ow <= ow+0.005 and data_ow >= ow-0.005) and (data_ox <= ox+0.005 and data_ox>= ox-0.005) and (data_oy <= oy+0.005 and data_oy >= oy-0.005) and (data_oz <= oz+0.005 and data_oz >= oz-0.005)):
-                #     stopend = 0
-                #     print("Reach to Goal Position")
-                #     client.publish("manipulator/debug","Reach to Goal Position",2)
-                #     return resp1
 
                 if(status == '"STOPPED"'):
                     stopend = 0
                     print("Reach to Goal Position")
+                    print("Idle State")
                     client.publish("manipulator/debug","Reach to Goal Position",2)
                     return resp1
 
@@ -251,74 +236,75 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, dt):
         print "Service call failed: %s"%e
         return False
 
-def set_forward_client(j1,j2,j3,j4,j5,j6,time):
-    global stopend
-    stopend = 0
-    service_name = '/goal_joint_space_path'
-    target_angle = [j1,j2,j3,j4,j5,j6]
-    joint_name = ["Joint 1","Joint 2","Joint 3","Joint 4","Joint 5","Joint 6"]
-    rospy.wait_for_service(service_name)
-    try:
-        set_position = rospy.ServiceProxy(service_name, SetJointPosition)
-
-        arg = SetJointPositionRequest()
-        for i in range(0,6):
-            arg.joint_position.joint_name.append(joint_name[i])
-            arg.joint_position.position.append(target_angle[i])
-            arg.path_time = time
-        resp1 = set_position(arg)
-        listener_joint_position()
-        while True:
-            listener_joint_position()
-            if stopend == 0:
-                print("Moving State", joint1, joint2, joint3, joint4, joint5, joint6)
-                client.publish("manipulator/debug","Moving State",2)
-
-                if((joint1 <= j1+0.05 and joint1 >= j1-0.05) and (joint2 <= j2+0.05 and joint2 >= j2-0.05) and (joint3 <= j3+0.05 and joint3 >= j3-0.05) and (joint4 <= j4+0.05 and joint4 >= j4-0.05) and (joint5 <= j5+0.05 and joint5 >= j5-0.5) and (joint6 <= j6+0.05 and joint6 >= j6-0.05)):
-                    print("Reach to Goal Position")
-                    client.publish("manipulator/debug","Reach to Goal Position",2)
-                    stopend = 0
-                    return resp1
-
-                print("status is:",status)
-                if(status == '"STOPPED"'):
-                    stopend = 0
-                    print("Over Limit Workspace")
-                    client.publish("manipulator/debug","Over Limit Workspace",2)
-                    return resp1
-
-                # if((joint1 >= 1.50 or joint1 <= -1.50) or (joint2 >= 0.7 or joint2 <= -1.50) or (joint3 >= 2.30 or joint3 <= -1.50) or (joint4 >= 3.05 or joint4 <= -3.05) or (joint5 >= 1.50 or joint5 <= -1.50)or (joint6 >= 3.05 or joint6 <= -3.05)):
-                #     target_angle = [joint1,joint2,joint3,joint4,joint5,joint6]
-                #     for i in range(0,6):
-                #         arg.joint_position.joint_name.append(joint_name[i])
-                #         arg.joint_position.position.append(target_angle[i])
-                #         arg.path_time = time
-                #     resp1 = set_position(arg)
-                #     stopend = 0
-                #     print("Over Limit Workspace")
-                #     client.publish("manipulator/debug","Over Limit Workspace",2)
-                #     return resp1
-
-                if stop == 1:
-                    client.publish("manipulator/debug","Stop State",2)
-                    target_angle = [joint1,joint2,joint3,joint4,joint5,joint6]
-                    for i in range(0,6):
-                        arg.joint_position.joint_name.append(joint_name[i])
-                        arg.joint_position.position.append(target_angle[i])
-                        arg.path_time = time
-                    resp1 = set_position(arg)
-
-                    while stop == 1:
-                        print("Stop State")
-                        if stop == 0:
-                            stopend = 1
-                            break
-            else:
-                break
-
-    except rospy.ServiceException, e:
-        print "Service call failed: %s"%e
-        return False
+# def set_forward_client(j1,j2,j3,j4,j5,j6,time):
+#     global stopend
+#     stopend = 0
+#     service_name = '/goal_joint_space_path'
+#     target_angle = [j1,j2,j3,j4,j5,j6]
+#     joint_name = ["Joint 1","Joint 2","Joint 3","Joint 4","Joint 5","Joint 6"]
+#     rospy.wait_for_service(service_name)
+#     try:
+#         set_position = rospy.ServiceProxy(service_name, SetJointPosition)
+#
+#         arg = SetJointPositionRequest()
+#         for i in range(0,6):
+#             arg.joint_position.joint_name.append(joint_name[i])
+#             arg.joint_position.position.append(target_angle[i])
+#             arg.path_time = time
+#         resp1 = set_position(arg)
+#         listener_joint_position()
+#         while True:
+#             listener_joint_position()
+#             if stopend == 0:
+#                 print("Moving State", joint1, joint2, joint3, joint4, joint5, joint6)
+#                 client.publish("manipulator/debug","Moving State",2)
+#
+#                 if((joint1 <= j1+0.05 and joint1 >= j1-0.05) and (joint2 <= j2+0.05 and joint2 >= j2-0.05) and (joint3 <= j3+0.05 and joint3 >= j3-0.05) and (joint4 <= j4+0.05 and joint4 >= j4-0.05) and (joint5 <= j5+0.05 and joint5 >= j5-0.5) and (joint6 <= j6+0.05 and joint6 >= j6-0.05)):
+#                     print("Reach to Goal Position")
+#                     print("Idle State")
+#                     client.publish("manipulator/debug","Reach to Goal Position",2)
+#                     stopend = 0
+#                     return resp1
+#
+#                 print("status is:",status)
+#                 if(status == '"STOPPED"'):
+#                     stopend = 0
+#                     print("Over Limit Workspace")
+#                     client.publish("manipulator/debug","Over Limit Workspace",2)
+#                     return resp1
+#
+#                 # if((joint1 >= 1.50 or joint1 <= -1.50) or (joint2 >= 0.7 or joint2 <= -1.50) or (joint3 >= 2.30 or joint3 <= -1.50) or (joint4 >= 3.05 or joint4 <= -3.05) or (joint5 >= 1.50 or joint5 <= -1.50)or (joint6 >= 3.05 or joint6 <= -3.05)):
+#                 #     target_angle = [joint1,joint2,joint3,joint4,joint5,joint6]
+#                 #     for i in range(0,6):
+#                 #         arg.joint_position.joint_name.append(joint_name[i])
+#                 #         arg.joint_position.position.append(target_angle[i])
+#                 #         arg.path_time = time
+#                 #     resp1 = set_position(arg)
+#                 #     stopend = 0
+#                 #     print("Over Limit Workspace")
+#                 #     client.publish("manipulator/debug","Over Limit Workspace",2)
+#                 #     return resp1
+#
+#                 if stop == 1:
+#                     client.publish("manipulator/debug","Stop State",2)
+#                     target_angle = [joint1,joint2,joint3,joint4,joint5,joint6]
+#                     for i in range(0,6):
+#                         arg.joint_position.joint_name.append(joint_name[i])
+#                         arg.joint_position.position.append(target_angle[i])
+#                         arg.path_time = time
+#                     resp1 = set_position(arg)
+#
+#                     while stop == 1:
+#                         print("Stop State")
+#                         if stop == 0:
+#                             stopend = 1
+#                             break
+#             else:
+#                 break
+#
+#     except rospy.ServiceException, e:
+#         print "Service call failed: %s"%e
+#         return False
 
 def run_mode():
     global dt
@@ -359,7 +345,7 @@ def run_mode():
         roll = float(st[6])
         dt = float(st[7])
         if((x != prev_x) or (y != prev_y) or (z != prev_z) or (yaw != prev_yaw) or (pitch != prev_pitch) or (roll != prev_roll)):
-            if((x > 0 and x <= 0.15) and (y > 0 and y <= 0.15)):
+            if((x > 0 and x <= 0.1) and (y > 0 and y <= 0.1)):
                 over_limit = 1
             if(z < 0.2):
                 over_limit = 1
@@ -376,45 +362,46 @@ def run_mode():
                 prev_pitch = pitch
                 prev_roll = roll
         else:
-            print("Idle State")
+            #print("Idle State")
             client.publish("manipulator/debug","Idle State",2)
-    elif mode == 2:
-        j1 = float(st[1])
-        j2 = float(st[2])
-        j3 = float(st[3])
-        j4 = float(st[4])
-        j5 = float(st[5])
-        j6 = float(st[6])
-        dt = float(st[7])
-        x = 0.264*sin(j2) + 0.258*cos(j2+j3) + 0.123*cos(j2+j3+j5)
-        z = 0.264*cos(j2) - 0.258*sin(j2+j3) - 0.123*sin(j2+j3+j5) + 0.159
-        listener_joint_position()
 
-        print("x,z from cal is: " ,x,z)
-        if((j1 != prev_j1) or (j2 != prev_j2) or (j3 != prev_j3) or (j4 != prev_j4) or (j5 != prev_j5) or (j6 != prev_j6)):
-            if((j1 > 1.57 and j1 < -1.57) or (j4 > 1.57 and j4 < -1.57) or (j6 > 1.57 and j6 < -1.57)):
-                over_limit = 1
-
-            if((x > 0 and x < 0.2) and (z > 0 and z < 0.2)):
-                over_limit = 1
-
-            if(z < 0.1):
-                over_limit = 1
-
-            if(over_limit == 1):
-                print("Over Limit Workspace")
-                client.publish("manipulator/debug","Over Limit Workspace",2)
-            else:
-                response = set_forward_client(j1,j2,j3,j4,j5,j6,dt)
-                prev_j1 = j1
-                prev_j2 = j2
-                prev_j3 = j3
-                prev_j4 = j4
-                prev_j5 = j5
-                prev_j6 = j6
-        else:
-            print("Idle State")
-            client.publish("manipulator/debug","Idle State",2)
+    # elif mode == 2:
+    #     j1 = float(st[1])
+    #     j2 = float(st[2])
+    #     j3 = float(st[3])
+    #     j4 = float(st[4])
+    #     j5 = float(st[5])
+    #     j6 = float(st[6])
+    #     dt = float(st[7])
+    #     x = 0.264*sin(j2) + 0.258*cos(j2+j3) + 0.123*cos(j2+j3+j5)
+    #     z = 0.264*cos(j2) - 0.258*sin(j2+j3) - 0.123*sin(j2+j3+j5) + 0.159
+    #     listener_joint_position()
+    #
+    #     print("x,z from cal is: " ,x,z)
+    #     if((j1 != prev_j1) or (j2 != prev_j2) or (j3 != prev_j3) or (j4 != prev_j4) or (j5 != prev_j5) or (j6 != prev_j6)):
+    #         if((j1 > 1.57 and j1 < -1.57) or (j4 > 1.57 and j4 < -1.57) or (j6 > 1.57 and j6 < -1.57)):
+    #             over_limit = 1
+    #
+    #         if((x > 0 and x < 0.2) and (z > 0 and z < 0.2)):
+    #             over_limit = 1
+    #
+    #         if(z < 0.1):
+    #             over_limit = 1
+    #
+    #         if(over_limit == 1):
+    #             print("Over Limit Workspace")
+    #             client.publish("manipulator/debug","Over Limit Workspace",2)
+    #         else:
+    #             response = set_forward_client(j1,j2,j3,j4,j5,j6,dt)
+    #             prev_j1 = j1
+    #             prev_j2 = j2
+    #             prev_j3 = j3
+    #             prev_j4 = j4
+    #             prev_j5 = j5
+    #             prev_j6 = j6
+    #     else:
+    #         print("Idle State")
+    #         client.publish("manipulator/debug","Idle State",2)
 
     while stopend == 1: #Condition when not reach to goal position
         if mes == "HOME":
@@ -459,7 +446,11 @@ def run_mode():
 	# elif(but_count-1) % 4 == 2:
 	#     set_state(False)
 
-rospy.init_node('master_publisher', anonymous=True)
+def myhook():
+    client.publish("manipulator/debug","Shutdown and Reinitialize",2)
+    print("Shutdown and Reintialize")
+
+rospy.init_node('master_publisher')
 broker_address="broker.hivemq.com"
 
 client = mqtt.Client("master")
@@ -479,10 +470,10 @@ client.loop_start()
 while True:
     time.sleep(0.5)
     if mes == "SHUTDOWN":
+        client.loop_stop()
+        client.disconnect()
     	os.system("rosnode kill master_publisher")
     	rospy.on_shutdown(myhook)
+        break
     else:
         run_mode()
-
-client.loop_stop()
-client.disconnect()
