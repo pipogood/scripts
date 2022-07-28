@@ -205,12 +205,31 @@ def talker():
     pub = rospy.Publisher('chatter', String, queue_size=10)
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
-        if q2 == "STOP" or q3 == "STOP" or q4 == "STOP":
-        #if q1 == "STOP":
-            send_str = "STOP"
-            rospy.loginfo(send_str)
-        else:
-            send_str = "OK"
+        if q1 == "STOP":
+            send_str = "Q1_STOP"
+
+        if q2 == "STOP":
+            send_str = "Q2_STOP"
+
+        if q3 == "STOP":
+            send_str = "Q3_STOP"
+
+        if q4 == "STOP":
+            send_str = "Q4_STOP"
+
+        if q5 == "STOP":
+            send_str = "Q5_STOP"
+
+        if q6 == "STOP":
+            send_str = "Q6_STOP"
+
+        if q7 == "STOP":
+            send_str = "Q7_STOP"
+
+        if q8 == "STOP":
+            send_str = "Q8_STOP"
+
+        rospy.loginfo(send_str)
         pub.publish(send_str)
         rate.sleep()
 
@@ -223,7 +242,6 @@ def listener_joint():
     rospy.sleep(2)
 
 def listener_ridar():
-    rospy.init_node('listener_test',anonymous=True)
     rospy.Subscriber('/scan', LaserScan, callback_ridar)
     DemoNode()
     talker()
@@ -237,12 +255,20 @@ client = mqtt.Client()
 client.connect("broker.hivemq.com")
 
 if __name__ == '__main__':
-
+    rospy.init_node('listener_test')
     try:
-        listener_ridar()
+        os.system("rosnode kill listener_test")
+        rospy.on_shutdown(myhook)
+        #listener_ridar()
     except rospy.ROSInterruptException:
         print("exception thrown")
         pass
+
+    #rospy.sleep(1)
+    # os.system("rosnode kill listener_test")
+    # rospy.on_shutdown(myhook)
+    #listener_ridar()
+
     # joint1 = data_j[0]
     # joint2 = data_j[1]
     # joint3 = data_j[2]
