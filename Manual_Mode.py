@@ -6,7 +6,9 @@ import numpy
 import math
 import time
 import rospy
+from std_msgs.msg import String
 import paho.mqtt.client as mqtt
+
 if os.name == 'nt':
     import msvcrt
     def getch():
@@ -24,7 +26,6 @@ else:
         return ch
 
 from dynamixel_sdk import *  # Uses Dynamixel SDK library
-from sensor_msgs.msg import LaserScan
 
 ####################################################################################################################################################
 
@@ -81,7 +82,7 @@ DXL2_ID                        = 2                 # Dynamixel#2 ID : 2
 DXL3_ID                        = 3                 # Dynamixel#3 ID : 3
 DXL4_ID                        = 4                 # Dynamixel#4 ID : 4
 BAUDRATE                       = 57600             # Dynamixel default baudrate : 57600
-DEVICENAME                     = '/dev/ttyUSB0'    # Port connected to controller
+DEVICENAME                     = '/dev/ttyUSB1'    # Port connected to controller
 TORQUE_ENABLE                  = 1                 # Value for enabling the torque
 TORQUE_DISABLE                 = 0                 # Value for disabling the torque
 DXL_MOVING_STATUS_THRESHOLD    = 20                # Dynamixel moving status threshold
@@ -115,6 +116,7 @@ Wheel_stop_down = 0
 Time = 0
 dt = 0.1
 Flag_OK = 1
+Flag_CH = 1
 
 portHandler = PortHandler(DEVICENAME)
 packetHandler = PacketHandler(PROTOCOL_VERSION)
@@ -180,16 +182,10 @@ def WriteDXL_Feedback(W1,W2,W3,W4):
 ####################################################################################################################################################
 
 # The callback for when the client receives a CONNACK response from the server.
-def on_connect(client, userdata, flags, rc):
-    print("Connected with result code "+str(rc))
-
-    # Subscribing in on_connect() means that if we lose the connection and
-    # reconnect then subscriptions will be renewed.
-    client.subscribe("UnityToRobot/mobility")
 
 class DemoNode(): #Timer
   def __init__(self):
-    self.timer = rospy.Timer(W1,W2,W3,W4rospy.Duration(dt), self.demo_callback)
+    self.timer = rospy.Timer(rospy.Duration(dt), self.demo_callback)
 
   def demo_callback(self, timer):
     global Time
@@ -203,22 +199,37 @@ class DemoNode(): #Timer
 def callback_ridar(data):
     global Wheel_stop_up
     global Wheel_stop_left
-    rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+    global ridar_mes
+    global Flag_CH
+    global Timestamp
     ridar_mes = data.data
-    if(Flag_OK == 1):
-        if ridar_mes == "Q1_STOP" or ridar_mes == "Q2_STOP":
+    if(Flag_CH == 1):
+        if ridar_mes == "Q1_STOP" or ridar_mes == "Q2_STOP" or ridar_mes == "Q3_STOP":
+	    rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
             Wheel_stop_up = 1
-            Flag_OK == 0
-            client.publish("UnityToRobot/mobility","0 0 0")
+            Flag_CH = 0
+            Timestamp = Time
+	    WriteDXL_Feedback(0,0,0,0)
+            #client.publish("UnityToRobot/mobility","0 0 0")
 
-        if ridar_mes == "Q3_STOP" or ridar_mes == "Q4_STOP" or ridar_mes == "Q5_STOP":
+        if  ridar_mes == "Q4_STOP" or ridar_mes == "Q5_STOP":
+	    rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
             Wheel_stop_left = 1
-            Flag_OK == 0
-            client.publish("UnityToRobot/mobility","0 0 0")
+            Flag_CH = 0
+            Timestamp = Time
+	    WriteDXL_Feedback(0,0,0,0)
+            #client.publish("UnityToRobot/mobility","0 0 0")
 
 def listener():
     rospy.Subscriber("chatter", String, callback_ridar)
     DemoNode()
+
+def on_connect(client, userdata, flags, rc):
+    print("Connected with result code "+str(rc))
+    listener()
+    # Subscribing in on_connect() means that if we lose the connection and
+    # reconnect then subscriptions will be renewed.
+    client.subscribe("UnityToRobot/mobility")
 
 
 # def Mobility_listener():
@@ -233,9 +244,12 @@ def listener():
 def on_message(client, userdata, msg):
     global mes
     global Flag_OK
+    global Flag_CH
+    global Wheel_stop_up
+    global Wheel_stop_left
+    global ridar_mes
     print(msg.topic+" "+str(msg.payload))
     mes = msg.payload
-    #listener()
 
     Lx = 0.45
     Ly = 0.3
@@ -254,18 +268,22 @@ def on_message(client, userdata, msg):
     if Wheel_stop_up == 1:
         if(Vx < 0):
             Flag_OK = 1
-            Wheel_stop_up = 0
+            if(Time-Timestamp >= 2):
+                Wheel_stop_up = 0
+                Flag_CH = 1
         else:
             Flag_OK = 0
 
     if Wheel_stop_left == 1:
-        if(Vy > 0):
+        if(Vy < 0):
             Flag_OK = 1
-            Wheel_stop_left = 0
+            if(Time-Timestamp >= 2):
+                Wheel_stop_left = 0
+                Flag_CH = 1
         else:
             Flag_OK = 0
 
-    if(Flag_Ok == 1):
+    if(Flag_OK == 1):
         robot_vel = numpy.array([[Vx], [Vy], [Wz]])
         wheel_vel = ((1/R)*eqm).dot((robot_vel))*K
 
@@ -291,10 +309,12 @@ def on_message(client, userdata, msg):
             W4 = W4+1023
 
         print(W1,W2,W3,W4)
-        WriteDXL_Feedback(W1,W2,W3,W4)
+
+	if Vx != 0 or Vy != 0 or Wz != 0:
+            WriteDXL_Feedback(W1,W2,W3,W4)
 
     if Vx == 0 and Vy == 0 and Wz == 0:
-	    print("Stop")
+	print("Stop")
         W1 = 0
         W2 = 0
         W3 = 0
@@ -374,6 +394,8 @@ def on_message(client, userdata, msg):
 client = mqtt.Client()
 client.on_connect = on_connect
 client.on_message = on_message
+
+rospy.init_node('Mobility_listener')
 
 #client.connect("service.hcilab.net", 2580, 60)
 client.connect("broker.hivemq.com")
