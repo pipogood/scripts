@@ -14,13 +14,13 @@ from open_manipulator_msgs.srv import *
 
 #0.025 0 0.803
 
-home = "1 0.184 0 0.493 0 0 0 5"
+home = "1 0.454 0 0.493 0 0 0 5"
 pose_1 = "1 0.3 0.1 0.3 0 0 0.3 5"
 pose_2 = "1 0.5 0 0.2 0 0.7 0.2 5"
 mes = home
 stop = 0
 stopend = 0
-prev_x = 0.184
+prev_x = 0.454
 prev_y = 0
 prev_z = 0.493
 prev_yaw = 0
@@ -37,7 +37,8 @@ but_count = 0
 before_count = 0
 but_pin = 12
 MQTT_topic = [("telemm/man",0)]
-Start_loop = 1
+
+
 
 def on_connect(client, userdata, flags, rc):
     if rc == 0:
@@ -73,7 +74,7 @@ def on_message(client,userdata,msg):
 
 def run_begin():
     client.publish("manipulator/debug","Initialize",2)
-    service_name1 = '/goal_task_space_path'
+    service_name1 = '/goal_joint_space_path_to_kinematics_pose'
     rospy.wait_for_service(service_name1)
     set_position = rospy.ServiceProxy(service_name1, SetKinematicsPose)
     arg = SetKinematicsPoseRequest()
@@ -116,6 +117,15 @@ def callback_joint(data):
     joint5 = data_j[4]
     joint6 = data_j[5]
 
+class DemoNode(): #Timer
+  def __init__(self):
+    self.timer = rospy.Timer(rospy.Duration(dt), self.demo_callback)
+
+  def demo_callback(self, timer):
+    global Time
+    Time += dt
+
+
 def callback_position(data):
     global data_x
     global data_y
@@ -141,6 +151,7 @@ def listener_joint_position():
     rospy.Subscriber('joint_states', JointState, callback_joint)
     rospy.Subscriber('/gripper/kinematics_pose', KinematicsPose, callback_position)
     rospy.Subscriber('/states', OpenManipulatorState, callback_moving_status)
+    DemoNode()
     rospy.sleep(0.05)
 
 def set_state(state):
@@ -204,15 +215,8 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, dt):
 
                 if stop == 1:
 
+                    #set_state(False)
                     client.publish("manipulator/debug","Stop State",2)
-                    #rospy.sleep(0.5)
-                    # stop_x = data_x
-                    # stop_y = data_y
-                    # stop_z = data_z
-                    # stop_ox = data_ox
-                    # stop_oy = data_oy
-                    # stop_oz = data_oz
-                    # stop_ow = data_ow
                     arg.kinematics_pose.pose.position.x = data_x
                     arg.kinematics_pose.pose.position.y = data_y
                     arg.kinematics_pose.pose.position.z = data_z
@@ -306,6 +310,7 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, dt):
 #         print "Service call failed: %s"%e
 #         return False
 
+
 def run_mode():
     global dt
     global prev_yaw
@@ -345,9 +350,13 @@ def run_mode():
         roll = float(st[6])
         dt = float(st[7])
         if((x != prev_x) or (y != prev_y) or (z != prev_z) or (yaw != prev_yaw) or (pitch != prev_pitch) or (roll != prev_roll)):
-            if((x > 0 and x <= 0.1) and (y > 0 and y <= 0.1)):
+            if(x < 0.15):
                 over_limit = 1
-            if(z < 0.2):
+
+            if((x >= 0 and x <= 0.1) and (abs(y) >= 0 and abs(y) <= 0.1)):
+                over_limit = 1
+
+            if((x >= 0 and x <= 0.3) and (abs(y) >= 0 and abs(y) <= 0.35) and (z < 0.4)):
                 over_limit = 1
 
             if(over_limit == 1):
@@ -373,7 +382,7 @@ def run_mode():
     #     j5 = float(st[5])
     #     j6 = float(st[6])
     #     dt = float(st[7])
-    #     x = 0.264*sin(j2) + 0.258*cos(j2+j3) + 0.123*cos(j2+j3+j5)
+    #     x = 0.264*sin(j2) + 0.258*cos(j2+j3) + 0.123*cos(j2+j3+j5) - (0.264*sin(j2) + 0.258*cos(j2+j3) + 0.123*cos(j2+j3+j5))
     #     z = 0.264*cos(j2) - 0.258*sin(j2+j3) - 0.123*sin(j2+j3+j5) + 0.159
     #     listener_joint_position()
     #
@@ -470,10 +479,11 @@ client.loop_start()
 while True:
     time.sleep(0.5)
     if mes == "SHUTDOWN":
-        client.loop_stop()
-        client.disconnect()
-    	os.system("rosnode kill master_publisher")
-    	rospy.on_shutdown(myhook)
         break
     else:
         run_mode()
+
+os.system("rosnode kill master_publisher")
+rospy.on_shutdown(myhook)
+client.loop_stop()
+client.disconnect()
