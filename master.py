@@ -14,9 +14,9 @@ from open_manipulator_msgs.srv import *
 
 #0.025 0 0.803
 
-home = "1 0.454 0 0.493 0 0 0 5"
-pose_1 = "1 0.3 0.1 0.3 0 0 0.3 5"
-pose_2 = "1 0.5 0 0.2 0 0.7 0.2 5"
+home = "1 0.454 0 0.493 0 0 0 0 5"
+pose_1 = "1 0.3 0.1 0.3 0 0 0.3 0 5"
+pose_2 = "1 0.5 0 0.2 0 0.7 0.2 1 5"
 mes = home
 stop = 0
 stopend = 0
@@ -110,12 +110,12 @@ def callback_joint(data):
     global joint6
 
     data_j = data.position
-    joint1 = data_j[0]
-    joint2 = data_j[1]
-    joint3 = data_j[2]
-    joint4 = data_j[3]
-    joint5 = data_j[4]
-    joint6 = data_j[5]
+    joint1 = data_j[2]
+    joint2 = data_j[3]
+    joint3 = data_j[4]
+    joint4 = data_j[5]
+    joint5 = data_j[6]
+    joint6 = data_j[7]
 
 class DemoNode(): #Timer
   def __init__(self):
@@ -151,24 +151,24 @@ def listener_joint_position():
     rospy.Subscriber('joint_states', JointState, callback_joint)
     rospy.Subscriber('/gripper/kinematics_pose', KinematicsPose, callback_position)
     rospy.Subscriber('/states', OpenManipulatorState, callback_moving_status)
-    DemoNode()
+    #DemoNode()
     rospy.sleep(0.05)
 
-def set_state(state):
-    service_name2 = '/set_actuator_state'
-    rospy.wait_for_service(service_name2)
-    set_actuator = rospy.ServiceProxy(service_name2, SetActuatorState)
-    arg = SetActuatorStateRequest()
-    try:
-	arg.set_actuator_state = state
-	resp1 = set_actuator(arg)
-	return resp1
+# def set_state(state):
+#     service_name2 = '/set_actuator_state'
+#     rospy.wait_for_service(service_name2)
+#     set_actuator = rospy.ServiceProxy(service_name2, SetActuatorState)
+#     arg = SetActuatorStateRequest()
+#     try:
+# 	arg.set_actuator_state = state
+# 	resp1 = set_actuator(arg)
+# 	return resp1
+#
+#     except rospy.ServiceException, e:
+#         print "Service call failed: %s"%e
+#         return False
 
-    except rospy.ServiceException, e:
-        print "Service call failed: %s"%e
-        return False
-
-def set_inverse_client(x, y, z, yaw ,pitch, roll, dt):
+def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
     global stopend
     stopend = 0
     service_name1 = '/goal_joint_space_path_to_kinematics_pose'
@@ -196,6 +196,7 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, dt):
         arg.kinematics_pose.pose.orientation.z = oz
         arg.path_time = dt
         resp1 = set_position(arg)
+        Gripper_Control(grip_joint,dt)
         rospy.sleep(0.5)
 
         while True:
@@ -236,6 +237,24 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, dt):
                 break
 
 
+    except rospy.ServiceException, e:
+        print "Service call failed: %s"%e
+        return False
+
+
+def Gripper_Control(grip_joint,time):
+    service_name = '/goal_tool_control'
+    #target_angle = [j1,j2,j3,j4,j5,j6,grip_joint]
+    #joint_name = ["Joint 1","Joint 2","Joint 3","Joint 4","Joint 5","Joint 6","gripper"]
+    rospy.wait_for_service(service_name)
+    try:
+        set_position = rospy.ServiceProxy(service_name, SetJointPosition)
+        arg = SetJointPositionRequest()
+        arg.joint_position.joint_name.append("gripper")
+        arg.joint_position.position.append(grip_joint)
+        arg.path_time = time
+        resp2 = set_position(arg)
+        return resp2
     except rospy.ServiceException, e:
         print "Service call failed: %s"%e
         return False
@@ -319,7 +338,7 @@ def run_mode():
     global prev_x
     global prev_y
     global prev_z
-    global prev_j1
+    global prev_j1grip_joint
     global prev_j2
     global prev_j3
     global prev_j4
@@ -348,7 +367,8 @@ def run_mode():
         yaw = float(st[4])
         pitch = float(st[5])
         roll = float(st[6])
-        dt = float(st[7])
+        grip_joint = float(st[7])
+        dt = float(st[8])
         if((x != prev_x) or (y != prev_y) or (z != prev_z) or (yaw != prev_yaw) or (pitch != prev_pitch) or (roll != prev_roll)):
             if(x < 0.15):
                 over_limit = 1
@@ -356,14 +376,14 @@ def run_mode():
             if((x >= 0 and x <= 0.1) and (abs(y) >= 0 and abs(y) <= 0.1)):
                 over_limit = 1
 
-            if((x >= 0 and x <= 0.3) and (abs(y) >= 0 and abs(y) <= 0.35) and (z < 0.4)):
+            if((x >= 0 and x <= 0.4) and (abs(y) >= 0 and abs(y) <= 0.45) and (z < 0.45)):
                 over_limit = 1
 
             if(over_limit == 1):
                 print("Over Limit Workspace")
                 client.publish("manipulator/debug","Over Limit Workspace",2)
             else:
-                response = set_inverse_client(x, y, z, yaw ,pitch, roll, dt)
+                response = set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt)
                 prev_x = x
                 prev_y = y
                 prev_z = z
@@ -430,17 +450,18 @@ def run_mode():
             yaw = float(st[4])
             pitch = float(st[5])
             roll = float(st[6])
-            dt = float(st[7])
-            response = set_inverse_client(x, y, z, yaw ,pitch, roll, dt)
-        if mode == 2:
-            j1 = float(st[1])
-            j2 = float(st[2])
-            j3 = float(st[3])
-            j4 = float(st[4])
-            j5 = float(st[5])
-            j6 = float(st[6])
-            dt = float(st[7])
-            response = set_forward_client(j1,j2,j3,j4,j5,j6,dt)
+            grip_joint = float(st[7])
+            dt = float(st[8])
+            response = set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt)
+        # if mode == 2:
+        #     j1 = float(st[1])
+        #     j2 = float(st[2])
+        #     j3 = float(st[3])
+        #     j4 = float(st[4])
+        #     j5 = float(st[5])
+        #     j6 = float(st[6])
+        #     dt = float(st[8])
+        #     response = set_forward_client(j1,j2,j3,j4,j5,j6,dt)
         if stopend == 0:
             break
 	# cur_val = GPIO.input(but_pin)
