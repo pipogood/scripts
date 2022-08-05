@@ -14,13 +14,14 @@ from open_manipulator_msgs.srv import *
 
 #0.025 0 0.803
 
-home = "1 0.454 0 0.493 0 0 0 0 5"
+home = "1 0.484 0 0.493 0 0 0 0 5"
 pose_1 = "1 0.3 0.1 0.3 0 0 0.3 0 5"
 pose_2 = "1 0.5 0 0.2 0 0.7 0.2 1 5"
+set_stand = "1 0 0 1 0 -1.57 -1.57 0 5"
 mes = home
 stop = 0
 stopend = 0
-prev_x = 0.454
+prev_x = 0.484
 prev_y = 0
 prev_z = 0.493
 prev_yaw = 0
@@ -228,8 +229,8 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
                     arg.path_time = 2
                     #rospy.sleep(0.1)
                     resp1 = set_position(arg)
+                    print("Stop State")
                     while stop == 1:
-                        print("Stop State")
                         if stop == 0:
                             stopend = 1
                             break
@@ -253,8 +254,8 @@ def Gripper_Control(grip_joint,time):
         arg.joint_position.joint_name.append("gripper")
         arg.joint_position.position.append(grip_joint)
         arg.path_time = time
-        resp2 = set_position(arg)
-        return resp2
+        resp1 = set_position(arg)
+        return resp1
     except rospy.ServiceException, e:
         print "Service call failed: %s"%e
         return False
@@ -355,6 +356,8 @@ def run_mode():
         set = pose_1
     elif mes == "POSE_2":
         set = pose_2
+    elif mes == "STAND":
+        set = set_stand
     else:
         set = mes
     over_limit = 0
@@ -378,6 +381,12 @@ def run_mode():
 
             if((x >= 0 and x <= 0.4) and (abs(y) >= 0 and abs(y) <= 0.45) and (z < 0.45)):
                 over_limit = 1
+
+            if((x < 0.7) and (pitch < 0.5) and (z < 0.3)):
+                over_limit = 1
+
+            if(mes == "STAND"):
+                over_limit = 0
 
             if(over_limit == 1):
                 print("Over Limit Workspace")
