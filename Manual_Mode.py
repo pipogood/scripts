@@ -117,6 +117,7 @@ Time = 0
 dt = 0.1
 Flag_OK = 1
 Flag_CH = 1
+count = 0
 
 portHandler = PortHandler(DEVICENAME)
 packetHandler = PacketHandler(PROTOCOL_VERSION)
@@ -189,8 +190,17 @@ class DemoNode(): #Timer
 
   def demo_callback(self, timer):
     global Time
+    global count
+    global Timestamp
+    global Flag_CH
     Time += dt
     #print(Time)
+
+    if(count == 1):
+        if(Time-Timestamp >= 2.0):
+	        print("YESSSS")
+            Flag_CH = 1
+	    count = 0
 
 ####################################################################################################################################################
 
@@ -199,26 +209,37 @@ class DemoNode(): #Timer
 def callback_ridar(data):
     global Wheel_stop_up
     global Wheel_stop_left
+    global Wheel_stop_down
+    global Wheel_stop_right
     global ridar_mes
     global Flag_CH
-    global Timestamp
     ridar_mes = data.data
     if(Flag_CH == 1):
-        if ridar_mes == "Q1_STOP" or ridar_mes == "Q2_STOP" or ridar_mes == "Q3_STOP":
-	    rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+        if ridar_mes == "Q2_STOP" or ridar_mes == "Q3_STOP":
+	        rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
             Wheel_stop_up = 1
             Flag_CH = 0
-            Timestamp = Time
-	    WriteDXL_Feedback(0,0,0,0)
-            #client.publish("UnityToRobot/mobility","0 0 0")
+	        WriteDXL_Feedback(0,0,0,0)
 
         if  ridar_mes == "Q4_STOP" or ridar_mes == "Q5_STOP":
-	    rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+	        rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
             Wheel_stop_left = 1
             Flag_CH = 0
-            Timestamp = Time
-	    WriteDXL_Feedback(0,0,0,0)
-            #client.publish("UnityToRobot/mobility","0 0 0")
+	        WriteDXL_Feedback(0,0,0,0)
+
+        if  ridar_mes == "Q6_STOP" or ridar_mes == "Q7_STOP" :
+	        rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+            Wheel_stop_down = 1
+            Flag_CH = 0
+	        WriteDXL_Feedback(0,0,0,0)
+
+        if  ridar_mes == "Q8_STOP" or ridar_mes == "Q1_STOP":
+	        rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+            Wheel_stop_right = 1
+            Flag_CH = 0
+	        WriteDXL_Feedback(0,0,0,0)
+
+
 
 def listener():
     rospy.Subscriber("chatter", String, callback_ridar)
@@ -232,11 +253,6 @@ def on_connect(client, userdata, flags, rc):
     client.subscribe("UnityToRobot/mobility")
 
 
-# def Mobility_listener():
-#     rospy.init_node('Mobility_listener',anonymous=True)
-#     rospy.Subscriber('/scan', LaserScan, callback_ridar)
-#     DemoNode()
-
 ####################################################################################################################################################
 
 # The callback for when a PUBLISH message is received from the server.
@@ -247,7 +263,11 @@ def on_message(client, userdata, msg):
     global Flag_CH
     global Wheel_stop_up
     global Wheel_stop_left
+    global Wheel_stop_down
+    global Wheel_stop_right
     global ridar_mes
+    global count
+    global Timestamp
     print(msg.topic+" "+str(msg.payload))
     mes = msg.payload
 
@@ -268,18 +288,36 @@ def on_message(client, userdata, msg):
     if Wheel_stop_up == 1:
         if(Vx < 0):
             Flag_OK = 1
-            if(Time-Timestamp >= 2):
-                Wheel_stop_up = 0
-                Flag_CH = 1
+	    Timestamp = Time
+	    count = 1
+	    Wheel_stop_up = 0
         else:
             Flag_OK = 0
 
     if Wheel_stop_left == 1:
         if(Vy < 0):
             Flag_OK = 1
-            if(Time-Timestamp >= 2):
-                Wheel_stop_left = 0
-                Flag_CH = 1
+	    Timestamp = Time
+	    count = 1
+	    Wheel_stop_left = 0
+        else:
+            Flag_OK = 0
+
+    if Wheel_stop_down == 1:
+        if(Vx < 0):
+            Flag_OK = 1
+	    Timestamp = Time
+	    count = 1
+	    Wheel_stop_down = 0
+        else:
+            Flag_OK = 0
+
+    if Wheel_stop_right == 1:
+        if(Vy < 0):
+            Flag_OK = 1
+	    Timestamp = Time
+	    count = 1
+	    Wheel_stop_right = 0
         else:
             Flag_OK = 0
 
@@ -321,75 +359,6 @@ def on_message(client, userdata, msg):
         W4 = 0
         WriteDXL_Feedback(W1,W2,W3,W4)
 
-    # if Vx > 0 and Vy == 0 and Wz == 0:
-	#     print("Up")
-    #     W1 = int(math.floor(wheel_vel[0]))
-    #     W2 = int(math.floor(wheel_vel[1]))+1023
-    #     W3 = int(math.floor(wheel_vel[2]))
-    #     W4 = int(math.floor(wheel_vel[3]))+1023
-	#     print(W1,W2,W3,W4)
-    #     WriteDXL_Feedback(W1,W2,W3,W4)
-    #
-    #
-    #
-    # # "DOWN"
-    #
-    # if Vx < 0 and Vy == 0 anWheel_stop_leftd Wz == 0:
-	#     print("Down")
-    #     W1 = -(int(math.floor(wheel_vel[0]))-1023)
-    #     W2 = -(int(math.floor(wheel_vel[0])))
-    #     W3 = -(int(math.floor(wheel_vel[0]))-1023)
-    #     W4 = -(int(math.floor(wheel_vel[0])))
-	#     print(W1,W2,W3,W4)
-    #     WriteDXL_Feedback(W1,W2,W3,W4)
-    #
-    #
-    # # "RIGHT"
-    #
-    # if Vx == 0 and Vy > 0 and Wz ==0:
-	#     print("Right")
-    #     W1 = int(math.floor(wheel_vel[0])+1023)
-    #     W2 = -(int(math.floor(wheel_vel[1]))-1023)
-    #     W3 = -(int(math.floor(wheel_vel[2])))
-    #     W4 = (int(math.floor(wheel_vel[3])))
-	#     print(W1,W2,W3,W4)
-    #     WriteDXL_Feedback(W1,W2,W3,W4)
-    #
-    #
-    # # "LEFT"
-    #
-    # if Vx == 0 and Vy < 0 and Wz == 0:
-    #     print("Left")
-    #     W1 = -(int(math.floor(wheel_vel[0])))
-    #     W2 = int(math.floor(wheel_vel[1]))
-    #     W3 = int(math.floor(wheel_vel[2])+1023)
-    #     W4 = -(int(math.floor(wheel_vel[3]))-1023)
-    #     print(W1,W2,W3,W4)
-    #     WriteDXL_Feedback(W1,W2,W3,W4)
-    #
-    #
-    # # "TURN-RIGHT"
-    #
-    # if Vx == 0 and Vy == 0 and Wz > 0:
-	#     print("Turn-right")
-    #     W1 = -(int(math.floor(wheel_vel[0]))-1023)
-    #     W2 = (int(math.floor(wheel_vel[1]))+1023)
-    #     W3 = -(int(math.floor(wheel_vel[2]))-1023)
-    #     W4 = (int(math.floor(wheel_vel[3]))+1023)
-	#     print(W1,W2,W3,W4)
-    #     WriteDXL_Feedback(W1,W2,W3,W4)
-    #
-    #
-    # # "TURN-LEFT"
-    #
-    # if Vx == 0 and Vy == 0 and Wz < 0:
-	#     print("Turn-left")
-    #     W1 = (int(math.floor(wheel_vel[0])))
-    #     W2 = -(int(math.floor(wheel_vel[1])))
-    #     W3 = int(math.floor(wheel_vel[2]))
-    #     W4 = -(int(math.floor(wheel_vel[3])))
-	#     print(W1,W2,W3,W4)
-    #     WriteDXL_Feedback(W1,W2,W3,W4)
 
 client = mqtt.Client()
 client.on_connect = on_connect
