@@ -15,8 +15,8 @@ from open_manipulator_msgs.srv import *
 #0.025 0 0.803
 
 home = "2 0 0 0 0 1.57 0 0 5"
-pose_1 = "1 0.3 0 0.1 0 1.57 -1.57 0 5"
-pose_2 = "1 0.5 0 -0.2 0 1.57 -1.57 0 5"
+pose_1 = "1 0.4 0 0.1 0 1.2 -1.57 0 5"
+pose_2 = "1 0.5 0 -0.2 0 1.2 -1.57 0 5"
 set_stand = "2 0 0 0 0 -1.57 -1.57 0 5"
 mes = home
 stop = 0
@@ -346,14 +346,32 @@ def run_mode():
         grip_joint = float(st[7])
         dt = float(st[8])
         if((x != prev_x) or (y != prev_y) or (z != prev_z) or (yaw != prev_yaw) or (pitch != prev_pitch) or (roll != prev_roll) or (grip_joint != prev_grip)):
-            if(x < 0.15):
-                over_limit = 1
+            if(pitch == 1.2):
+                if(x < 0.4):
+                    over_limit = 1
 
-            if((x >= 0 and x <= 0.2) and (abs(y) >= 0 and abs(y) <= 0.4)):
-                over_limit = 1
+                if(z < -0.3)):
+                    over_limit = 1
 
-            if(mes == "STAND"):
-                over_limit = 0
+                if(abs(y) < 0.3):
+                    over_limit = 1
+
+            if(pitch == 0):
+
+                if(x < 0.4):
+                    over_limit = 1
+                    
+                if(z < 0.3 and x < 0.7):
+                    over_limit = 1
+
+                if(z < 0)):
+                    over_limit = 1
+
+                if(abs(y) < 0.3):
+                    over_limit = 1
+
+                if(mes == "STAND"):
+                    over_limit = 0
 
             if(over_limit == 1):
                 print("Over Limit Workspace")
