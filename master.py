@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import paho.mqtt.client as mqtt #import the client1
 import rospy
+import json
 import sys
 import os
 import time
@@ -18,7 +19,7 @@ home = "2 0 0 0 0 1.57 0 0 5"
 pose_1 = "1 0.4 0 0.1 0 1.2 -1.57 0 5"
 pose_2 = "1 0.5 0 -0.2 0 1.2 -1.57 0 5"
 set_stand = "2 0 0 0 0 -1.57 -1.57 0 5"
-mes = home
+mes = "0 0 0 0 0 0 0 0 0"
 stop = 0
 stopend = 0
 prev_x = 0.484
@@ -100,12 +101,12 @@ def callback_joint(data):
     global joint6
 
     data_j = data.position
-    joint1 = data_j[2]
-    joint2 = data_j[3]
-    joint3 = data_j[4]
-    joint4 = data_j[5]
-    joint5 = data_j[6]
-    joint6 = data_j[7]
+    joint1 = data_j[0]
+    joint2 = data_j[1]
+    joint3 = data_j[2]
+    joint4 = data_j[3]
+    joint5 = data_j[4]
+    joint6 = data_j[5]
 
 class DemoNode(): #Timer
   def __init__(self):
@@ -190,7 +191,7 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
 
         while True:
             if stopend == 0:
-                print("Moving State", data_x, data_y, data_z, data_ox, data_oy, data_oz, data_ow)
+                #print("Moving State", data_x, data_y, data_z, data_ox, data_oy, data_oz, data_ow)
                 client.publish("manipulator/debug","Moving State",2)
 
 
@@ -329,7 +330,7 @@ def run_mode():
     elif mes == "STAND":
         set = set_stand
     elif mes == 1:
-        set = "0"
+        set = "0 0 0 0 0 0 0 0 0"
     else:
         set = mes
 
@@ -346,32 +347,34 @@ def run_mode():
         grip_joint = float(st[7])
         dt = float(st[8])
         if((x != prev_x) or (y != prev_y) or (z != prev_z) or (yaw != prev_yaw) or (pitch != prev_pitch) or (roll != prev_roll) or (grip_joint != prev_grip)):
+
+            if(z < 0.3):
+                pitch = 0
+            else:
+                pitch = 1.2
+
             if(pitch == 1.2):
                 if(x < 0.4):
                     over_limit = 1
 
-                if(z < -0.3)):
+                if(z < -0.3):
                     over_limit = 1
 
                 if(abs(y) < 0.3):
                     over_limit = 1
 
             if(pitch == 0):
-
                 if(x < 0.4):
                     over_limit = 1
-                    
-                if(z < 0.3 and x < 0.7):
-                    over_limit = 1
 
-                if(z < 0)):
+                if(z < 0.3 and x < 0.7):
                     over_limit = 1
 
                 if(abs(y) < 0.3):
                     over_limit = 1
 
-                if(mes == "STAND"):
-                    over_limit = 0
+            if(mes == "STAND"):
+                over_limit = 0
 
             if(over_limit == 1):
                 print("Over Limit Workspace")
@@ -448,14 +451,14 @@ def run_mode():
             j6 = float(st[6])
             grip_joint = float(st[7])
             dt = float(st[8])
-            response = set_forward_client(j1,j2,j3,j4,j5,j6,dt)
+            response = set_forward_client(j1,j2,j3,j4,j5,j6,grip_joint,dt)
         if stopend == 0:
             break
 	# cur_val = GPIO.input(but_pin)
 	# if pre_val != cur_val:
 	#     but_count += 1
 	#     pre_val = cur_val
-	# print(but_count-1)
+	# print(but_count-1)"0 0 0 0 0 0 0 0 0"
 	# if (but_count-1) % 4 == 0 an    elif mPOSE_2ode == 2:
 	#     set_state(True)
 	#     print('in true')
@@ -486,7 +489,7 @@ listener_joint_position()
 client.loop_start()
 
 while True:
-    time.sleep(0.5)
+    #time.sleep(0.5)
     if mes == "SHUTDOWN":
         break
     else:
