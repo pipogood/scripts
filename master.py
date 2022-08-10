@@ -13,7 +13,32 @@ from sensor_msgs.msg import JointState
 from open_manipulator_msgs.msg import OpenManipulatorState
 from open_manipulator_msgs.srv import *
 
+if os.name == 'nt':
+    import msvcrt
+    def getch():
+        return msvcrt.getch().decode()
+else:
+    import sys, tty, termios
+    fd = sys.stdin.fileno()
+    old_settings = termios.tcgetattr(fd)
+    def getch():
+        try:
+            tty.setraw(sys.stdin.fileno())
+            ch = sys.stdin.read(1)
+        finally:
+            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
+        return ch
+
+from dynamixel_sdk import *  # Uses Dynamixel SDK library
+
 #0.025 0 0.803
+PROTOCOL_VERSION               = 2.0
+DEVICENAME                     = '/dev/ttyUSB0'
+LEN_MX_MOVING_SPEED            = 6
+ADDR_MX_MOVING_SPEED           = 556
+portHandler = PortHandler(DEVICENAME)
+packetHandler = PacketHandler(PROTOCOL_VERSION)
+groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_MX_MOVING_SPEED, LEN_MX_MOVING_SPEED)
 
 home = "2 0 0 0 0 1.57 0 0 5"
 pose_1 = "1 0.4 0 0.1 0 0 -1.57 0 5"
@@ -145,6 +170,16 @@ def listener_joint_position():
     #DemoNode()
     rospy.sleep(0.05)
 
+def Mani_stop():
+    for i in range (1,7):
+        dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, i, ADDR_MX_MOVING_SPEED, 0)
+        if dxl_comm_result != COMM_SUCCESS:
+            print("%s" % packetHandler.getTxRxResult(dxl_comm_result))
+        elif dxl_error != 0:
+            print("%s" % packetHandler.getRxPacketError(dxl_error))
+        else:
+            print("Dynamixel Stop OK" % i)
+
 # def set_state(state):
 #     service_name2 = '/set_actuator_state'
 #     rospy.wait_for_service(service_name2)
@@ -188,6 +223,7 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
         arg.path_time = dt
         resp1 = set_position(arg)
         print("Moving State")
+        Gripper_Control(grip_joint,dt)
         rospy.sleep(0.5)
 
         while True:
@@ -197,7 +233,6 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
 
                 if(status == '"STOPPED"'):
                     stopend = 0
-                    Gripper_Control(grip_joint,dt)
                     print("Reach to Goal Position")
                     print("Idle State")
                     client.publish("manipulator/debug","Reach to Goal Position",2)
@@ -207,16 +242,16 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
 
                 if stop == 1:
                     client.publish("manipulator/debug","Stop State",2)
-                    arg.kinematics_pose.pose.position.x = data_x
-                    arg.kinematics_pose.pose.position.y = data_y
-                    arg.kinematics_pose.pose.position.z = data_z
-                    arg.kinematics_pose.pose.orientation.w = data_ow
-                    arg.kinematics_pose.pose.orientation.x = data_ox
-                    arg.kinematics_pose.pose.orientation.y = data_oy
-                    arg.kinematics_pose.pose.orientation.z = data_oz
-                    arg.path_time = 2
-                    #rospy.sleep(0.1)
-                    resp1 = set_position(arg)
+                    Mani_stop()
+                    # arg.kinematics_pose.pose.position.x = data_x
+                    # arg.kinematics_pose.pose.position.y = data_y
+                    # arg.kinematics_pose.pose.position.z = data_z
+                    # arg.kinematics_pose.pose.orientation.w = data_ow
+                    # arg.kinematics_pose.pose.orientation.x = data_ox
+                    # arg.kinematics_pose.pose.orientation.y = data_oy
+                    # arg.kinematics_pose.pose.orientation.z = data_oz
+                    # arg.path_time = 2
+                    # resp1 = set_position(arg)
                     print("Stop State")
                     while stop == 1:
                         if stop == 0:
@@ -262,6 +297,7 @@ def set_forward_client(j1,j2,j3,j4,j5,j6,grip_joint,time):
             arg.path_time = time
         resp1 = set_position(arg)
         print("Moving State")
+        Gripper_Control(grip_joint,time)
         rospy.sleep(0.5)
 
         while True:
@@ -271,7 +307,6 @@ def set_forward_client(j1,j2,j3,j4,j5,j6,grip_joint,time):
 
                 if(status == '"STOPPED"'):
                     stopend = 0
-                    Gripper_Control(grip_joint,time)
                     print("Reach to Goal Position")
                     print("Idle State")
                     client.publish("manipulator/debug","Reach to Goal Position",2)
@@ -349,13 +384,13 @@ def run_mode():
         dt = float(st[8])
         if((x != prev_x) or (y != prev_y) or (z != prev_z) or (grip_joint != prev_grip)):
 
-            if(z > 0.3):
+            if(z >= 0.3):
                 pitch = 0
             else:
                 pitch = 1.2
 
             if(pitch == 1.2):
-                if(x < 0.4):
+                if(x < 0.5):
                     over_limit = 1
 
                 if(z < -0.3):
@@ -365,7 +400,7 @@ def run_mode():
                     over_limit = 1
 
             if(pitch == 0):
-                if(x < 0.4):
+                if(x < 0.5):
                     over_limit = 1
 
                 if(abs(y) > 0.3):
