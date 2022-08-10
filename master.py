@@ -187,13 +187,13 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
         arg.kinematics_pose.pose.orientation.z = oz
         arg.path_time = dt
         resp1 = set_position(arg)
+        print("Moving State")
         rospy.sleep(0.5)
 
         while True:
             if stopend == 0:
                 #print("Moving State", data_x, data_y, data_z, data_ox, data_oy, data_oz, data_ow)
-                client.publish("manipulator/debug","Moving State",2)
-
+                #client.publish("manipulator/debug","Moving State",2)
 
                 if(status == '"STOPPED"'):
                     stopend = 0
@@ -203,7 +203,7 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
                     client.publish("manipulator/debug","Reach to Goal Position",2)
                     return resp1
 
-                print("status is:",status)
+                #print("status is:",status)
 
                 if stop == 1:
                     client.publish("manipulator/debug","Stop State",2)
@@ -261,12 +261,13 @@ def set_forward_client(j1,j2,j3,j4,j5,j6,grip_joint,time):
             arg.joint_position.position.append(target_angle[i])
             arg.path_time = time
         resp1 = set_position(arg)
+        print("Moving State")
         rospy.sleep(0.5)
 
         while True:
             if stopend == 0:
                 #print("Moving State", data_x, data_y, data_z, data_ox, data_oy, data_oz, data_ow)
-                client.publish("manipulator/debug","Moving State",2)
+                #client.publish("manipulator/debug","Moving State",2)
 
                 if(status == '"STOPPED"'):
                     stopend = 0
@@ -276,7 +277,7 @@ def set_forward_client(j1,j2,j3,j4,j5,j6,grip_joint,time):
                     client.publish("manipulator/debug","Reach to Goal Position",2)
                     return resp1
 
-                print("status is:",status)
+                #print("status is:",status)
 
                 if stop == 1:
                     client.publish("manipulator/debug","Stop State",2)
