@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import json
 import os
 import numpy
 import math
@@ -29,25 +29,6 @@ from dynamixel_sdk import *  # Uses Dynamixel SDK library
 
 ####################################################################################################################################################
 
-# Control table ADDRess for MX-106
-# EEPROM REGISTER ADDRESSES - Permanently stored in memory once changed
-ADDR_MX_MODEL_NUMBER           = 0
-ADDR_MX_FIRMWARE_VERSION       = 2
-ADDR_MX_ID                     = 3
-ADDR_MX_BAUD_RATE              = 4
-ADDR_MX_RETURN_DELAY_TIME      = 5
-ADDR_MX_CW_ANGLE_LIMIT         = 6
-ADDR_MX_CCW_ANGLE_LIMIT        = 8
-ADDR_MX_DRIVE_MODE             = 10
-ADDR_MX_LIMIT_TEMPERATURE      = 11
-ADDR_MX_MIN_VOLTAGE_LIMIT      = 12
-ADDR_MX_MAX_VOLTAGE_LIMIT      = 13
-ADDR_MX_MAX_TORQUE             = 14
-ADDR_MX_STATUS_RETURN_LEVEL    = 16
-ADDR_MX_ALARM_LED              = 17
-ADDR_MX_SHUTDOWN               = 18
-ADDR_MX_MULTI_TURN_OFFSET      = 20
-ADDR_MX_RESOLUTION_DIVIDER     = 22
 
 # RAM REGISTER ADDRESSES - resets after shut down
 ADDR_MX_TORQUE_ENABLE          = 24
@@ -122,7 +103,7 @@ count = 0
 portHandler = PortHandler(DEVICENAME)
 packetHandler = PacketHandler(PROTOCOL_VERSION)
 groupSyncWrite = GroupSyncWrite(portHandler, packetHandler, ADDR_MX_MOVING_SPEED, LEN_MX_MOVING_SPEED )
-
+MQTT_topic = [("unity/mobot/mobility",0),("Mobot/stop",0),("Mobot/shutdown",0)]
 
 ###################################################################################################################################################
 
@@ -169,14 +150,11 @@ def Feedback():
         print("%s" % packetHandler.getRxPacketError(dxl_error))
 
 def WriteDXL_Feedback(W1,W2,W3,W4):
+    client.publish("mobility/debug","Moving",2)
     dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, 1, ADDR_MX_MOVING_SPEED, W1)
-    Feedback()
     dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, 2, ADDR_MX_MOVING_SPEED, W2)
-    Feedback()
     dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, 3, ADDR_MX_MOVING_SPEED, W3)
-    Feedback()
     dxl_comm_result, dxl_error = packetHandler.write2ByteTxRx(portHandler, 4, ADDR_MX_MOVING_SPEED, W4)
-    Feedback()
 
 ####################################################################################################################################################
 
@@ -198,7 +176,7 @@ class DemoNode(): #Timer
 
     if(count == 1):
         if(Time-Timestamp >= 2.0):
-	        print("YESSSS")
+	        #print("YESSSS")
             Flag_CH = 1
 	    count = 0
 
@@ -248,10 +226,11 @@ def listener():
 def on_connect(client, userdata, flags, rc):
     print("Connected with result code "+str(rc))
     listener()
-    # Subscribing in on_connect() means that if we lose the connection and
-    # reconnect then subscriptions will be renewed.
-    client.subscribe("UnityToRobot/mobility")
+    client.subscribe(MQTT_topic)
 
+def myhook():
+	client.publish("mobility/debug","Shutdown and Reinitialize",2)
+	print("Shutdown and Reintialize")
 
 ####################################################################################################################################################
 
@@ -268,22 +247,33 @@ def on_message(client, userdata, msg):
     global ridar_mes
     global count
     global Timestamp
-    print(msg.topic+" "+str(msg.payload))
+    #print(msg.topic+" "+str(msg.payload))
+    topic = msg.payload
     mes = msg.payload
 
+    # Wheel Parameter
     Lx = 0.45
     Ly = 0.3
-
-    # Wheel Parameter
-
     R = 0.04
     K = 40.92
     eqm = numpy.array([[1, 1, -(Lx+Ly)], [1, -1, (Lx+Ly)], [1, -1, -(Lx+Ly)], [1, 1, (Lx+Ly)]])
-    st = mes.split()
 
-    Vx = float(st[0])
-    Vy = float(st[1])
-    Wz = float(st[2])
+    st = json.loads(mes)
+    if(topic == 'unity/mobot/mobility'):
+        Vx = (st["mobi_vx"])
+        Vy = (st["mobi_vy"])
+        Wz = (st["mobi_w"])
+
+    elif(topic == 'Mobot/stop'):
+        Vx = 0
+        Vy = 0
+        Wz = 0
+
+    elif(topic == 'Mobot/shutdown'):
+        os.system("rosnode kill Mobility_listener")
+        rospy.on_shutdown(myhook)
+        client.loop_stop()
+        client.disconnect()
 
     if Wheel_stop_up == 1:
         if(Vx < 0):

@@ -3,6 +3,7 @@ import rospy
 import os
 import math
 import time
+import json
 from math import sin,cos
 # from open_manipulator_msgs.msg import KinematicsPose
 # from sensor_msgs.msg import JointState
@@ -36,18 +37,18 @@ Q7 = ''
 Q8 = ''
 Time = 0
 dt = 0.1
-
+send_to_unity = {}
 
 class DemoNode():
   def __init__(self):
     self.timer = rospy.Timer(rospy.Duration(dt), self.demo_callback)
 
   def demo_callback(self, timer):
-    global Time
-    Time += dt
-    send_to_unity = Q1 + ' ' + Q2 + ' ' + Q3 + ' '+ Q4 + ' ' + Q5 + ' ' + Q6 + ' ' + Q7 +' ' + Q8
-    #if(q2 != "OK"):
-    client.publish("RobotFeedback/mobility",send_to_unity)
+    # global Time
+    # Time += dt
+    send_to_unity = {'lidar_q1':Q1, 'lidar_q2':Q2, 'lidar_q3':Q3, 'lidar_q4':Q4, 'lidar_q5':Q5,'lidar_q6':Q6, 'lidar_q7':Q7, 'lidar_q8':Q8}
+    #print(send_to_unity)
+    client.publish("mobot/unity/lidar",json.dumps(send_to_unity,sort_keys=True))
     #print(Time)
 
 def callback_ridar1(data):
@@ -83,7 +84,7 @@ def callback_ridar1(data):
 
         if (degree >= 1 and degree < 45):
             if (lidar_x < 0.4 and lidar_y < 0.4):
-                q1_1 = "WARNING"
+                q1_1 = "BEWARE"
             if (lidar_x < 0.2 and lidar_y < 0.4):
                 q1_1 = "STOP"
             if (lidar_x >= 0.4):
@@ -91,7 +92,7 @@ def callback_ridar1(data):
 
         if (degree >= 45 and degree < 90):
             if (lidar_x < 0.4 and lidar_y < 0.4):
-                q1_2 = "WARNING"
+                q1_2 = "BEWARE"
             if (lidar_x < 0.2 and lidar_y < 0.4):
                 q1_2 = "STOP"
             if (lidar_x >= 0.4 and lidar_y < 0.4):
@@ -99,7 +100,7 @@ def callback_ridar1(data):
 
         if (degree >= 90 and degree < 135):
             if (data.ranges[i] < 0.4):
-                q1_3 = "WARNING"
+                q1_3 = "BEWARE"
             if (data.ranges[i] < 0.2):
                 q1_3 = "STOP"
             if (data.ranges[i] >= 0.4):
@@ -107,7 +108,7 @@ def callback_ridar1(data):
 
         if (degree >= 135 and degree < 180):
             if (data.ranges[i] < 0.4):
-                q1_4 = "WARNING"
+                q1_4 = "BEWARE"
             if (data.ranges[i] < 0.2):
                 q1_4 = "STOP"
             if (data.ranges[i] >= 0.4):
@@ -115,7 +116,7 @@ def callback_ridar1(data):
 
         if (degree >= 180 and degree < 225):
             if (lidar_y < 0.4):
-                q1_5 = "WARNING"
+                q1_5 = "BEWARE"
             if (lidar_y < 0.2):
                 q1_5 = "STOP"
             if (lidar_y >= 0.4):
@@ -123,14 +124,14 @@ def callback_ridar1(data):
 
         if (degree >= 225 and degree < 270):
             if (lidar_y < 0.4):
-                q1_6 = "WARNING"
+                q1_6 = "BEWARE"
             if (lidar_y < 0.2):
                 q1_6 = "STOP"
             if (lidar_y >= 0.4):
                 q1_6 = "OK"
         if (degree >= 270 and degree < 315):
             if (lidar_x < 0.4):
-                q1_7 = "WARNING"
+                q1_7 = "BEWARE"
             if (lidar_x < 0.2):
                 q1_7 = "STOP"
             if (lidar_x >= 0.4):
@@ -138,7 +139,7 @@ def callback_ridar1(data):
 
         if (degree >= 315 and degree < 360):
             if (lidar_y < 0.4):
-                q1_8 = "WARNING"
+                q1_8 = "BEWARE"
             if (lidar_y < 0.2):
                 q1_8 = "STOP"
             if (lidar_y >= 0.4):
@@ -146,29 +147,29 @@ def callback_ridar1(data):
 
         if  q1_8 == "STOP":
             Q2 = "STOP"
-        elif q1_8 == "WARNING":
-            Q2 = "WARNING"
+        elif q1_8 == "BEWARE":
+            Q2 = "BEWARE"
         elif q1_8 == "OK":
             Q2 = "OK"
 
         if  q1_1 == "STOP":
             Q3 = "STOP"
-        elif q1_1 == "WARNING":
-            Q3 = "WARNING"
+        elif q1_1 == "BEWARE":
+            Q3 = "BEWARE"
         elif q1_1 == "OK":
             Q3 = "OK"
 
         if q1_2 == "STOP" or q1_3 == "STOP":
             Q4 = "STOP"
-        elif q1_2 == "WARNING" or q1_3 == "WARNING":
-            Q4 = "WARNING"
+        elif q1_2 == "BEWARE" or q1_3 == "BEWARE":
+            Q4 = "BEWARE"
         elif q1_2 == "OK" and q1_3 == "OK":
             Q4 = "OK"
 
         if q1_4 == "STOP" or q1_5 == "STOP":
             Q5 = "STOP"
-        elif q1_4 == "WARNING" or q1_5 == "WARNING":
-            Q5 = "WARNING"
+        elif q1_4 == "BEWARE" or q1_5 == "BEWARE":
+            Q5 = "BEWARE"
         elif q1_4 == "OK" and q1_5 == "OK":
             Q5 = "OK"
 
@@ -270,28 +271,28 @@ def callback_ridar2(data):
         if  q2_1 == "STOP":
             Q7 = "STOP"
         elif q2_1 == "WARNING":
-            Q7 = "WARNING"
+            Q7 = "BEWARE"
         elif q2_1 == "OK":
             Q7 = "OK"
 
         if  q2_8 == "STOP":
             Q6 = "STOP"
         elif q2_8 == "WARNING":
-            Q6 = "WARNING"
+            Q6 = "BEWARE"
         elif q2_8 == "OK":
             Q6 = "OK"
 
         if q2_2 == "STOP" or q2_3 == "STOP":
             Q8 = "STOP"
         elif q2_2 == "WARNING" or q2_3 == "WARNING":
-            Q8 = "WARNING"
+            Q8 = "BEWARE"
         elif q2_2 == "OK" and q2_3 == "OK":
             Q8 = "OK"
 
         if q2_4 == "STOP" or q2_5 == "STOP":
             Q1 = "STOP"
         elif q2_4 == "WARNING" or q2_5 == "WARNING":
-            Q1 = "WARNING"
+            Q1 = "BEWARE"
         elif q2_4 == "OK" and q2_5 == "OK":
             Q1 = "OK"
 
@@ -300,69 +301,6 @@ def talker():
     pub = rospy.Publisher('chatter', String, queue_size=10)
     rate = rospy.Rate(10) # 10hz
     while not rospy.is_shutdown():
-        # if q1_1 == "STOP":
-        #     send_str = "Q1_1_STOP"
-        #     rospy.loginfo(send_str)
-        #
-        # if q1_2 == "STOP":
-        #     send_str = "Q1_2_STOP"
-        #     rospy.loginfo(send_str)
-        #
-        # if q1_3 == "STOP":
-        #     send_str = "Q1_3_STOP"
-        #     rospy.loginfo(send_str)
-        #
-        # if q1_4 == "STOP":
-        #     send_str = "Q1_4_STOP"
-        #     rospy.loginfo(send_str)
-        #
-        # if q1_5 == "STOP":
-        #     send_str = "Q1_5_STOP"
-        #     rospy.loginfo(send_str)
-        #
-        # if q1_6 == "STOP":
-        #     send_str = "Q1_6_STOP"
-        #     #rospy.loginfo(send_str)
-        #
-        # if q1_7 == "STOP":
-        #     send_str = "Q1_7_STOP"
-        #     #rospy.loginfo(send_str)
-        #
-        # if q1_8 == "STOP":
-        #     send_str = "Q1_8_STOP"
-        #     rospy.loginfo(send_str)
-        #
-        # if q2_1 == "STOP":
-        #     send_str = "Q2_1_STOP"
-        #     rospy.loginfo(send_str)
-        # if q2_2 == "STOP":
-        #     send_str = "Q2_2_STOP"
-        #     rospy.loginfo(send_str)
-        #
-        # if q2_3 == "STOP":
-        #     send_str = "Q2_3_STOP"
-        #     rospy.loginfo(send_str)
-        #
-        # if q2_4 == "STOP":
-        #     send_str = "Q2_4_STOP"
-        #     rospy.loginfo(send_str)
-        #
-        # if q2_5 == "STOP":
-        #     send_str = "Q2_5_STOP"
-        #     rospy.loginfo(send_str)
-        #
-        # if q2_6 == "STOP":
-        #     send_str = "Q2_6_STOP"
-        #     #rospy.loginfo(send_str)
-        #
-        # if q2_7 == "STOP":
-        #     send_str = "Q2_7_STOP"
-        #     #rospy.loginfo(send_str)
-        #
-        # if q2_8 == "STOP":
-        #     send_str = "Q2_8_STOP"
-        #     rospy.loginfo(send_str)
-        #     # pub.publish(send_str)
 
         if Q1 == "STOP":
             send_str = "Q1_STOP"
@@ -407,9 +345,9 @@ def talker():
         rate.sleep()
 
 def listener_ridar():
-    rospy.Subscriber('/lidar0/scan', LaserScan, callback_ridar1)
-    rospy.Subscriber('/lidar1/scan', LaserScan, callback_ridar2)
-    #DemoNode()
+    #rospy.Subscriber('/lidar0/scan', LaserScan, callback_ridar1)
+    #rospy.Subscriber('/lidar1/scan', LaserScan, callback_ridar2)
+    DemoNode()
     talker()
     rospy.spin()
 
@@ -422,8 +360,6 @@ client.connect("broker.hivemq.com")
 if __name__ == '__main__':
     rospy.init_node('listener_test')
     try:
-        # os.system("rosnode kill listener_test")
-        # rospy.on_shutdown(myhook)
         listener_ridar()
     except rospy.ROSInterruptException:
         print("exception thrown")
