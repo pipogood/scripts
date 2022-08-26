@@ -46,6 +46,7 @@ before_count = 0
 but_pin = 12
 dt = 0.1
 topic = ""
+statouni = "yes"
 MQTT_topic = [("unity/mobot/manipulator",0),("unity/mobot/gripper",0),("unity/mobot/manual",0),("Mobot/stop",0),("Mobot/shutdown",0)]
 
 def on_connect(client, userdata, flags, rc):
@@ -72,17 +73,16 @@ def on_message(client,userdata,msg):
     m_decode=str(msg.payload.decode("utf-8","ignore"))
     mes = m_decode
 
-    if topic == 'Mobot/stop':
-        stop = 1
+    # if topic == 'Mobot/stop':
+    #     stop = 1
+    #
+    # elif topic == 'Mobot/shutdown':
+    #     stop = 1
+    #     shutdown = "SHUTDOWN"
 
-    elif topic == 'Mobot/shutdown':
-        stop = 1
-        shutdown = "SHUTDOWN"
+    #st = json.loads(mes)
 
-    else:
-        st = json.loads(mes)
-
-    print("message received",m_decode)
+    #print("message received",m_decode)
 
 
 def run_begin():
@@ -125,7 +125,8 @@ class DemoNode(): #Timer
     self.timer = rospy.Timer(rospy.Duration(dt), self.demo_callback)
 
   def demo_callback(self, timer):
-      send_to_unity = {'mani_x': data_x, 'mani_y' : data_y, 'mani_z': data_z}
+      global statouni
+      send_to_unity = {'mani_x': data_x, 'mani_y' : data_y, 'mani_z': data_z, 'workspace': statouni}
       client.publish("mobot/unity/manipulator",json.dumps(send_to_unity,sort_keys=True))
     # global Time
     # Time += dt
@@ -174,6 +175,7 @@ def set_state(state):
         return False
 
 def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
+    global statouni
     service_name1 = '/goal_joint_space_path_to_kinematics_pose'
     rospy.wait_for_service(service_name1)
     set_position = rospy.ServiceProxy(service_name1, SetKinematicsPose)
@@ -199,40 +201,46 @@ def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
         arg.kinematics_pose.pose.orientation.z = oz
         arg.path_time = dt
         resp1 = set_position(arg)
-        print("Moving State")
+        rospy.sleep(0.05)
+        print("Moving State",status)
+        if status == '"STOPPED"':
+            statouni = "no"
+        else:
+            statouni = "yes"
         Gripper_Control(grip_joint,dt)
-        rospy.sleep(0.5)
+        return resp1
+        #rospy.sleep(0.5)
 
-        while True:
-            #print("Moving State", data_x, data_y, data_z, data_ox, data_oy, data_oz, data_ow)
-            #client.publish("manipulator/debug","Moving State",2)
-
-            if(status == '"STOPPED"'):
-                print("Reach to Goal Position")
-                print("Idle State")
-                client.publish("manipulator/debug","Reach to Goal Position",2)
-                return resp1
-
-            #print("status is:",status)
-
-            if stop == 1:
-                #set_state(False)
-                #set_state(True)
-                print("Stop State")
-                client.publish("manipulator/debug","Stop State",2)
-                #rospy.sleep(0.5)
-                #set_forward_client(joint1,joint2,joint3,joint4,joint5,joint6,0,0.5)
-                arg.kinematics_pose.pose.position.x = data_x
-                arg.kinematics_pose.pose.position.y = data_y
-                arg.kinematics_pose.pose.position.z = data_z
-                arg.kinematics_pose.pose.orientation.w = data_ow
-                arg.kinematics_pose.pose.orientation.x = data_ox
-                arg.kinematics_pose.pose.orientation.y = data_oy
-                arg.kinematics_pose.pose.orientation.z = data_oz
-                arg.path_time = 0.5
-                #rospy.sleep(0.1)
-                resp1 = set_position(arg)
-                break
+        # while True:
+        #     #print("Moving State", data_x, data_y, data_z, data_ox, data_oy, data_oz, data_ow)
+        #     #client.publish("manipulator/debug","Moving State",2)
+        #
+        #     if(status == '"STOPPED"'):
+        #         print("Reach to Goal Position")
+        #         print("Idle State")
+        #         client.publish("manipulator/debug","Reach to Goal Position",2)
+        #         return resp1
+        #
+        #     #print("status is:",status)
+        #
+        #     if stop == 1:
+        #         #set_state(False)
+        #         #set_state(True)
+        #         print("Stop State")
+        #         client.publish("manipulator/debug","Stop State",2)
+        #         #rospy.sleep(0.5)
+        #         #set_forward_client(joint1,joint2,joint3,joint4,joint5,joint6,0,0.5)
+        #         arg.kinematics_pose.pose.position.x = data_x
+        #         arg.kinematics_pose.pose.position.y = data_y
+        #         arg.kinematics_pose.pose.position.z = data_z
+        #         arg.kinematics_pose.pose.orientation.w = data_ow
+        #         arg.kinematics_pose.pose.orientation.x = data_ox
+        #         arg.kinematics_pose.pose.orientation.y = data_oy
+        #         arg.kinematics_pose.pose.orientation.z = data_oz
+        #         arg.path_time = 0.5
+        #         #rospy.sleep(0.1)
+        #         resp1 = set_position(arg)
+        #         break
 
 
 
@@ -320,7 +328,8 @@ def run_mode():
 
 
     if topic == 'unity/mobot/manipulator':
-        mode = (st["mani_mode"])
+        mode = 1
+        st = json.loads(mes)
         x = (st["mani_x"])
         y = (st["mani_y"])
         z = (st["mani_z"])
@@ -435,7 +444,7 @@ def myhook():
 
 rospy.init_node('master_publisher')
 broker_address="broker.hivemq.com"
-
+#broker_address="10.61.5.112"
 client = mqtt.Client("master")
 client.on_connect = on_connect
 client.on_disconnect = on_disconnect
@@ -443,7 +452,7 @@ client.on_message = on_message
 print("Conecting to broker",broker_address)
 
 #client.connect(broker_address,2580)
-client.connect(broker_address)
+client.connect(broker_address,1883)
 run_begin()
 listener_joint_position()
 # GPIO.setmode(GPIO.BOARD)
@@ -461,5 +470,6 @@ while True:
 
 os.system("rosnode kill master_publisher")
 rospy.on_shutdown(myhook)
+#os.system("shutdown -h -t 5")
 client.loop_stop()
 client.disconnect()
