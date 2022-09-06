@@ -15,20 +15,21 @@ from open_manipulator_msgs.srv import *
 
 #0.025 0 0.803
 
-home = "2 0 0 0 0 0.78 -1.57 0 5"
-pose_1 = "1 0.5 0 0.1 0 0 -1.57 0 5"
-pose_2 = "1 0.5 0 -0.2 0 0 -1.57 0 5"
-set_stand = "2 0 0 -1.57 0 0 -1.57 0 5"
+home = "2 0 0 0 0 0.5 0 0 5"
+pose_1 = "1 0.5 0 0.1 0 0 0 0 5"
+pose_2 = "1 0.5 0 -0.2 0 0 0 0 5"
+set_stand = "2 0 0 -1.57 0 0 0 0 5"
 shutdown = ""
 stop = 0
 stopend = 0
 mode = 1
-x = 0.484
+x = 0.611
 y = 0
 z = 0.493
-prev_x = 0.484
+pitch = 0
+prev_x = 0.659
 prev_y = 0
-prev_z = 0.493
+prev_z = 0.250
 prev_yaw = 0
 prev_pitch = 0
 prev_roll = 0
@@ -40,12 +41,14 @@ prev_j3 = 0
 prev_j4 = 0
 prev_j5 = 0
 prev_j6 = 0
-pre_val = None
-but_count = 0
-before_count = 0
-but_pin = 12
+#pre_val = None
+#but_count = 0
+#before_count = 0
+#but_pin = 12
 dt = 0.1
 topic = ""
+flag_stop = 0
+flag_overw = 0
 statouni = "yes"
 MQTT_topic = [("unity/mobot/manipulator",0),("unity/mobot/gripper",0),("unity/mobot/manual",0),("Mobot/stop",0),("Mobot/shutdown",0)]
 
@@ -68,19 +71,12 @@ def on_message(client,userdata,msg):
     global topic
     global shutdown
     global st
+    global grip_joint
+    global pitch
 
     topic = msg.topic
     m_decode=str(msg.payload.decode("utf-8","ignore"))
     mes = m_decode
-
-    # if topic == 'Mobot/stop':
-    #     stop = 1
-    #
-    # elif topic == 'Mobot/shutdown':
-    #     stop = 1
-    #     shutdown = "SHUTDOWN"
-
-    #st = json.loads(mes)
 
     #print("message received",m_decode)
 
@@ -88,7 +84,7 @@ def on_message(client,userdata,msg):
 def run_begin():
     client.publish("manipulator/debug","Initialize",2)
     service_name = '/goal_joint_space_path'
-    target_angle = [0,0,0,0,0.78,-1.57]
+    target_angle = [0,0,0,0,0.5,0]
     joint_name = ["Joint 1","Joint 2","Joint 3","Joint 4","Joint 5","Joint 6"]
     rospy.wait_for_service(service_name)
     try:
@@ -125,9 +121,10 @@ class DemoNode(): #Timer
     self.timer = rospy.Timer(rospy.Duration(dt), self.demo_callback)
 
   def demo_callback(self, timer):
-      global statouni
-      send_to_unity = {'mani_x': data_x, 'mani_y' : data_y, 'mani_z': data_z, 'workspace': statouni}
-      client.publish("mobot/unity/manipulator",json.dumps(send_to_unity,sort_keys=True))
+    global statouni
+    send_to_unity = {'mani_x': data_x, 'mani_y' : data_y, 'mani_z': data_z, 'workspace': statouni}
+    #print(send_to_unity)
+    client.publish("mobot/unity/manipulator",json.dumps(send_to_unity,sort_keys=True))
     # global Time
     # Time += dt
 
@@ -175,78 +172,49 @@ def set_state(state):
         return False
 
 def set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt):
-    global statouni
-    service_name1 = '/goal_joint_space_path_to_kinematics_pose'
-    rospy.wait_for_service(service_name1)
-    set_position = rospy.ServiceProxy(service_name1, SetKinematicsPose)
-    arg = SetKinematicsPoseRequest()
-    arg.end_effector_name = 'gripper'
-    try:
-        arg.kinematics_pose.pose.position.x = x
-        arg.kinematics_pose.pose.position.y = y
-        arg.kinematics_pose.pose.position.z = z
-        cy = cos(yaw * 0.5)
-        sy = sin(yaw * 0.5)
-        cp = cos(pitch * 0.5)
-        sp = sin(pitch * 0.5)
-        cr = cos(roll * 0.5)
-        sr = sin(roll * 0.5)
-        ow = cr * cp * cy + sr * sp * sy
-        ox = sr * cp * cy - cr * sp * sy
-        oy = cr * sp * cy + sr * cp * sy
-        oz = cr * cp * sy - sr * sp * cy
-        arg.kinematics_pose.pose.orientation.w = ow
-        arg.kinematics_pose.pose.orientation.x = ox
-        arg.kinematics_pose.pose.orientation.y = oy
-        arg.kinematics_pose.pose.orientation.z = oz
-        arg.path_time = dt
-        resp1 = set_position(arg)
-        rospy.sleep(0.05)
-        print("Moving State",status)
-        if status == '"STOPPED"':
-            statouni = "no"
-        else:
-            statouni = "yes"
-        Gripper_Control(grip_joint,dt)
-        return resp1
+	global flag_overw
+	global statouni
+	flag_overw = 0
+	service_name1 = '/goal_joint_space_path_to_kinematics_pose'
+	rospy.wait_for_service(service_name1)
+	set_position = rospy.ServiceProxy(service_name1, SetKinematicsPose)
+	arg = SetKinematicsPoseRequest()
+	arg.end_effector_name = 'gripper'
+	try:
+		arg.kinematics_pose.pose.position.x = x
+		arg.kinematics_pose.pose.position.y = y
+		arg.kinematics_pose.pose.position.z = z
+		cy = cos(yaw * 0.5)
+		sy = sin(yaw * 0.5)
+		cp = cos(pitch * 0.5)
+		sp = sin(pitch * 0.5)
+		cr = cos(roll * 0.5)
+		sr = sin(roll * 0.5)
+		ow = cr * cp * cy + sr * sp * sy
+		ox = sr * cp * cy - cr * sp * sy
+		oy = cr * sp * cy + sr * cp * sy
+		oz = cr * cp * sy - sr * sp * cy
+		arg.kinematics_pose.pose.orientation.w = ow
+		arg.kinematics_pose.pose.orientation.x = ox
+		arg.kinematics_pose.pose.orientation.y = oy
+		arg.kinematics_pose.pose.orientation.z = oz
+		arg.path_time = dt
+		resp1 = set_position(arg)
+		rospy.sleep(0.1)
+		#print("Moving State",status)
+		if status == '"STOPPED"':
+			statouni = "no"
+			flag_overw = 1
+		#print("Moving State2",status,flag_overw)
+		if status == '"IS_MOVING"' and flag_overw == 0:
+			statouni = "yes"
+		#print(statouni)
         #rospy.sleep(0.5)
 
-        # while True:
-        #     #print("Moving State", data_x, data_y, data_z, data_ox, data_oy, data_oz, data_ow)
-        #     #client.publish("manipulator/debug","Moving State",2)
-        #
-        #     if(status == '"STOPPED"'):
-        #         print("Reach to Goal Position")
-        #         print("Idle State")
-        #         client.publish("manipulator/debug","Reach to Goal Position",2)
-        #         return resp1
-        #
-        #     #print("status is:",status)
-        #
-        #     if stop == 1:
-        #         #set_state(False)
-        #         #set_state(True)
-        #         print("Stop State")
-        #         client.publish("manipulator/debug","Stop State",2)
-        #         #rospy.sleep(0.5)
-        #         #set_forward_client(joint1,joint2,joint3,joint4,joint5,joint6,0,0.5)
-        #         arg.kinematics_pose.pose.position.x = data_x
-        #         arg.kinematics_pose.pose.position.y = data_y
-        #         arg.kinematics_pose.pose.position.z = data_z
-        #         arg.kinematics_pose.pose.orientation.w = data_ow
-        #         arg.kinematics_pose.pose.orientation.x = data_ox
-        #         arg.kinematics_pose.pose.orientation.y = data_oy
-        #         arg.kinematics_pose.pose.orientation.z = data_oz
-        #         arg.path_time = 0.5
-        #         #rospy.sleep(0.1)
-        #         resp1 = set_position(arg)
-        #         break
 
-
-
-    except rospy.ServiceException, e:
-        print "Service call failed: %s"%e
-        return False
+	except rospy.ServiceException, e:
+		print "Service call failed: %s"%e
+		return False
 
 
 def Gripper_Control(grip_joint,time):
@@ -263,6 +231,7 @@ def Gripper_Control(grip_joint,time):
     except rospy.ServiceException, e:
         print "Service call failed: %s"%e
         return False
+
 
 def set_forward_client(j1,j2,j3,j4,j5,j6,grip_joint,time):
     service_name = '/goal_joint_space_path'
@@ -308,6 +277,7 @@ def run_mode():
     global x
     global y
     global z
+    global pitch
     global grip_joint
     global prev_x
     global prev_y
@@ -321,75 +291,90 @@ def run_mode():
     global prev_j6
     global mode
     global stop
+    global statouni
     ##for switch##
     global but_count
     global before_count
     global pre_val
-
-
-    if topic == 'unity/mobot/manipulator':
-        mode = 1
+    global flag_stop
+    mode = 0
+    over_limit = 0
+    if topic == 'unity/mobot/manipulator' and flag_stop == 0:
         st = json.loads(mes)
-        x = (st["mani_x"])
-        y = (st["mani_y"])
-        z = (st["mani_z"])
-        stop = 0
+        mode = 1
+        x = (st["mani_x"])*0.005
+        y = (st["mani_y"])*0.005
+        z = (st["mani_z"])*0.005
+        if over_limit == 0 and statouni == "yes":
+            prev_x += x
+            prev_y += y
+            prev_z += z
+            print(prev_x,prev_y,prev_z)
 
-    elif topic == 'unity/mobot/gripper':
+    if topic == 'unity/mobot/gripper' and flag_stop == 0:
+        st = json.loads(mes)
         grip_joint = (st["gripper"])
+        Gripper_Control(grip_joint,1)
         stop = 0
 
-    elif topic == 'unity/mobot/manual':
+    if topic == 'unity/mobot/manual' and flag_stop == 0:
+        st = json.loads(mes)
         mode = 2
-        set = (st["manual"])
-        if set == "HOME":
-            set = home
-        elif mes == "STAND":
-            set = set_stand
-        stop = 0
+        get = (st["manual"])
+        if get == "mani_stand":
+        	set2 = set_stand
+        else:
+        	set2 = home
 
-    if stop == 0:
-        over_limit = 0
+    if topic == 'Mobot/stop':
+        if mes == "STOP":
+            flag_stop = 1
+            set_inverse_client(data_x, data_y, data_z, 0 ,pitch, 0, grip_joint, 0.1)
+            stop = 1
+        if mes == "OK":
+        	flag_stop = 0
+        	stop = 0
+    #print(flag_stop,stop)
+    if topic == 'Mobot/shutdown':
+        stop = 1
+        shutdown = "SHUTDOWN"
+
+
+    if stop == 0 and flag_stop == 0:
         if mode == 1:
             yaw = 0
             pitch = 0
-            roll = -1.57
-            dt = 5
-            if((x != prev_x) or (y != prev_y) or (z != prev_z) or (grip_joint != prev_grip)):
+            roll = 0
+            dt = 0.5
+            if(prev_z >= 0.3):
+                pitch = 0.5
+            else:
+                pitch = 0.5
 
-                if(z >= 0.3):
-                    pitch = 0
-                else:
-                    pitch = 0.78
+            if(prev_x <= 0.6): #0.58
+                over_limit = 1
 
-                if(pitch == 0.78):
-                    if(x < 0.58):
-                        over_limit = 1
+            if(prev_x >= 0.85):
+                over_limit = 1
 
-                    if(z < -0.3):
-                        over_limit = 1
+            if(prev_z <= -0.17):
+                over_limit = 1
 
-                    if(abs(y) > 0.3):
-                        over_limit = 1
+            if(prev_z >= 0.8):
+                over_limit = 1
 
-                if(pitch == 0):
-                    if(x < 0.58):
-                        over_limit = 1
+            if(abs(prev_y)) >= 0.3:
+                over_limit = 1
 
-                    if(abs(y) > 0.3):
-                        over_limit = 1
+            if(mes == "STAND"):
+                over_limit = 0
 
-                if(mes == "STAND"):
-                    over_limit = 0
-
-                if(over_limit == 1):
-                    print("Over Limit Workspace")
-                    client.publish("manipulator/debug","Over Limit Workspace",2)
-                else:
-                    response = set_inverse_client(x, y, z, yaw ,pitch, roll, grip_joint, dt)
-                    prev_x = x
-                    prev_y = y
-                    prev_z = z
+            if(over_limit == 1):
+                print("Over Limit Workspace")
+                client.publish("manipulator/debug","Over Limit Workspace",2)
+            else:
+                if over_limit == 0:
+                    response = set_inverse_client(prev_x, prev_y, prev_z, yaw ,pitch, roll, grip_joint, dt)
                     prev_j1 = joint1
                     prev_j2 = joint2
                     prev_j3 = joint3
@@ -397,46 +382,29 @@ def run_mode():
                     prev_j5 = joint5
                     prev_j6 = joint6
                     prev_grip = grip_joint
-            else:
-                #print("Idle State")
-                client.publish("manipulator/debug","Idle State",2)
 
         elif mode == 2:
-            split = set.split()
+            split = set2.split()
             j1 = float(split[1])
             j2 = float(split[2])
             j3 = float(split[3])
             j4 = float(split[4])
             j5 = float(split[5])
             j6 = float(split[6])
-            grip_joint = float(split[7])
+            grip_joint = grip_joint
             dt = float(split[8])
             if((j1 != prev_j1) or (j2 != prev_j2) or (j3 != prev_j3) or (j4 != prev_j4) or (j5 != prev_j5) or (j6 != prev_j6)):
                 set_forward_client(j1,j2,j3,j4,j5,j6,grip_joint,dt)
+                prev_x = data_x
+                prev_y = data_y
+                prev_z = data_z
                 prev_j1 = j1
                 prev_j2 = j2
                 prev_j3 = j3
                 prev_j4 = j4
                 prev_j5 = j5
                 prev_j6 = j6
-                prev_x = data_x
-                prev_y = data_y
-                prev_z = data_z
-    else:
-        prev_x = 0
-        prev_y = 0
-        prev_z = 0
-	# cur_val = GPIO.input(but_pin)
-	# if pre_val != cur_val:
-	#     but_count += 1
-	#     pre_val = cur_val
-	# print(but_count-1)"0 0 0 0 0 0 0 0 0"
-	# if (but_count-1) % 4 == 0 an    elif mPOSE_2ode == 2:
-	#     set_state(True)
-	#     print('in true')
-	#     before_count = but_count-1
-	# elif(but_count-1) % 4 == 2:
-	#     set_state(False)
+                prev_grip = grip_joint
 
 def myhook():
 	client.publish("manipulator/debug","Shutdown and Reinitialize",2)
@@ -444,7 +412,7 @@ def myhook():
 
 rospy.init_node('master_publisher')
 broker_address="broker.hivemq.com"
-#broker_address="10.61.5.112"
+
 client = mqtt.Client("master")
 client.on_connect = on_connect
 client.on_disconnect = on_disconnect
@@ -452,12 +420,10 @@ client.on_message = on_message
 print("Conecting to broker",broker_address)
 
 #client.connect(broker_address,2580)
-client.connect(broker_address,1883)
+client.connect(broker_address)
+#client.connect("192.168.200.2",1883)
 run_begin()
 listener_joint_position()
-# GPIO.setmode(GPIO.BOARD)
-# GPIO.setup(but_pin, GPIO.IN)
-
 client.loop_start()
 
 while True:
@@ -470,6 +436,5 @@ while True:
 
 os.system("rosnode kill master_publisher")
 rospy.on_shutdown(myhook)
-#os.system("shutdown -h -t 5")
 client.loop_stop()
 client.disconnect()
